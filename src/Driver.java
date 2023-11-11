@@ -9,13 +9,11 @@ public class Driver {
     public static void driverOptions() throws SQLException {
         boolean exit = false;
         while (!exit) {
-            System.out.println("1. Insert ward information");
-            System.out.println("2. View all ward information");
-            System.out.println("3. Update ward information");
-            System.out.println("4. Delete ward information");
+            System.out.println("1. Insert driver Information");
+            System.out.println("2. View all driver information");
+            System.out.println("3. Update driver information");
+            System.out.println("4. Delete driver information");
             System.out.println("5. Return to the home screen");
-            System.out.println("Select suitable option");
-            System.out.println("Choose what operation you want to perform");
 
             int choice;
             while (true) {
@@ -33,7 +31,10 @@ public class Driver {
                 case 2 -> viewDriver();
                 case 3 -> updateDriver();
                 case 4 -> deleteDriver();
-                case 5 -> System.out.println("Back to home menu");
+                case 5 -> {
+                    System.out.println("Back to home menu");
+                    exit = true;
+                }
                 default -> System.out.println("Invalid choice. Please try again.");
             }
         }

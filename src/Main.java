@@ -84,7 +84,7 @@ public class Main {
     }
 
     public static void initialize() throws FileNotFoundException {
-        String path = "/Users/prachi/Documents/DBMS_Project/src/ReloadDB.sql";
+        String path = "src/ReloadDB.sql";
         ScriptRunner scriptRunner = new ScriptRunner(connection);
         scriptRunner.setSendFullScript(false);
         scriptRunner.setStopOnError(true);
