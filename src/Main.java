@@ -1,10 +1,16 @@
 //package src;
+import org.apache.ibatis.jdbc.ScriptRunner;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.Reader;
 import java.sql.*;
 import java.util.Scanner;
 
 public class Main {
     static final String USERNAME = "pnavale";
-    static final String PW = "*****";
+    static final String PW = "prach04";
     static final String jdbcURL = "jdbc:mariadb://classdb2.csc.ncsu.edu:3306/pnavale";
     // Put your oracle ID and password here
 
@@ -60,6 +66,7 @@ public class Main {
 //                    case 4 -> payment();
 //                    case 5 -> reportsMenu();
 //                    case 6 -> initialize();
+                    case 7 -> initialize();
                     case 8 -> exit = true;
                     default -> System.out.println("Invalid choice. Please try again.");
                 }
@@ -67,11 +74,21 @@ public class Main {
         } catch (SQLException | ClassNotFoundException e) {
             System.out.println(e.getMessage());
             throw new RuntimeException(e);
-        }
-        finally {
+        } catch (FileNotFoundException e) {
+            System.out.println("\nSQL file not found!");
+            throw new RuntimeException(e);
+        } finally {
             System.out.println("\nCLOSING the Database connection finally!");
             close();
         }
+    }
+
+    public static void initialize() throws FileNotFoundException {
+        String path = "/Users/prachi/Documents/DBMS_Project/src/ReloadDB.sql";
+        ScriptRunner scriptRunner = new ScriptRunner(connection);
+        scriptRunner.setSendFullScript(false);
+        scriptRunner.setStopOnError(true);
+        scriptRunner.runScript(new FileReader(path));
     }
 
     /**
