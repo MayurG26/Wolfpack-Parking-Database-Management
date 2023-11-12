@@ -91,6 +91,13 @@ public class Main {
         scriptRunner.runScript(new FileReader(path));
     }
 
+    public static void printTable(String tableName) throws SQLException {
+        String queryString = "SELECT * FROM " + tableName;
+        PreparedStatement preparedStatement = connection.prepareStatement(queryString);
+        ResultSet rs = preparedStatement.executeQuery();
+        DBTablePrinter.printResultSet(rs);
+    }
+
     /**
      * Connects to the database.
      * @throws ClassNotFoundException
