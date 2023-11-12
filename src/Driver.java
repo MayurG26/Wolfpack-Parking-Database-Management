@@ -50,13 +50,7 @@ public class Driver {
         System.out.println("Enter Driver Status: ");
         String driverStatus = scanner.nextLine();
 
-        boolean driverExists = false;
-        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Driver WHERE DriverID = " + driverId);
-        if (rs.next()) {
-            driverExists = true;
-        }
-
-        if (driverExists){
+       if(doesDriverIDExist(driverId)){
             System.out.println("Driver ID already exists. Please try again.");
             System.out.println("Following is the existing driver information: \n");
             Main.printTable("Driver");
@@ -235,5 +229,4 @@ public class Driver {
         }
         return driverExists;
     }
-
 }
