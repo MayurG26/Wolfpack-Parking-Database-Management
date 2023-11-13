@@ -1,10 +1,8 @@
 //package src;
 import org.apache.ibatis.jdbc.ScriptRunner;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.Reader;
 import java.sql.*;
 import java.util.Scanner;
 
@@ -63,7 +61,7 @@ public class Main {
                     case 1 -> Driver.driverOptions();
 //                    case 2 -> deleteMenu();
 //                    case 3 -> updateMenu();
-//                    case 4 -> payment();
+                    case 4 -> Vehicle.vehicleOptions();
 //                    case 5 -> reportsMenu();
 //                    case 6 -> initialize();
                     case 7 -> initialize();
