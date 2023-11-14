@@ -59,7 +59,7 @@ public class Main {
                 // Perform the selected action
                 switch (choice) {
                     case 1 -> Driver.driverOptions();
-//                    case 2 -> deleteMenu();
+                    case 2 -> ParkingLot.lotOptions();
 //                    case 3 -> updateMenu();
                     case 4 -> Vehicle.vehicleOptions();
 //                    case 5 -> reportsMenu();
