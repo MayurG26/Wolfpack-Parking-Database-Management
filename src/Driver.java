@@ -44,13 +44,22 @@ public class Driver {
     private static void insertDriver() throws SQLException {
         System.out.println("\nEnter Driver Name: ");
         String driverName = scanner.nextLine();
-        System.out.println("Enter Driver ID: ");
-        BigInteger driverId = scanner.nextBigInteger();
-        scanner.nextLine();
+        BigInteger driverId = null;
+
+        while (true) {
+            try {
+                System.out.println("Enter Driver ID: ");
+                driverId = new BigInteger(String.valueOf(Long.parseLong(scanner.nextLine())));
+                break;
+            } catch (Exception e) {
+                System.out.println("Please enter a valid driver id (numerical)");
+            }
+        }
+
         System.out.println("Enter Driver Status: ");
         String driverStatus = scanner.nextLine();
 
-       if(doesDriverIDExist(driverId)){
+        if(doesDriverIDExist(driverId)){
             System.out.println("Driver ID already exists. Please try again.");
             System.out.println("Following is the existing driver information: \n");
             Main.printTable("Driver");
