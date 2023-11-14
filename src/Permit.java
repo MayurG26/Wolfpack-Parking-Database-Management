@@ -2,6 +2,7 @@ import org.apache.ibatis.jdbc.Null;
 import org.apache.ibatis.jdbc.SQL;
 
 import javax.xml.transform.Result;
+import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -41,7 +42,9 @@ public class Permit {
                 case 2 -> viewPermit();
                 case 3 -> updatePermit();
                 case 4 -> deletePermit();
-                case 5 -> System.out.println("Back to home menu");
+                case 5 -> {System.out.println("Back to home menu");
+                    exit = true;
+                }
                 default -> System.out.println("Invalid choice. Please try again.");
             }
         }
@@ -69,19 +72,71 @@ public class Permit {
         System.out.println("Enter Assigned Zone ID: ");
         String assignedZoneId = scanner.nextLine();
 
-        System.out.println("Enter Driver ID: ");
-        long driverId = Long.parseLong(scanner.nextLine());
+        System.out.println("Enter Car License Number: ");
+        String licenseNo = scanner.nextLine();
+
+        long driverId;
+
+        while (true) {
+            try {
+                System.out.print("Enter your driver id: ");
+                driverId =Long.parseLong(scanner.nextLine());
+                break;
+            } catch (Exception e) {
+                System.out.println("Please enter a valid driver id (numerical)");
+            }
+        }
 
         try {
+            String status = null;
+            String LotName = null;
+            Integer number = null;
+            boolean driverIDexists=false;
+            ResultSet rs=Main.statement.executeQuery("SELECT Status FROM Driver WHERE DriverID = " + driverId + ";");
+            if(rs.next()){
+                status = rs.getString("Status");
+                driverIDexists=true;
+            }
+            if(driverIDexists)
+            {
+                String insertQuery = ("INSERT into Permit (PermitID, PermitType, StartDate, ExpDate, ExpTime, AssignedSpaceType, AssignedZoneID, DriverID) VALUES (\'" + permitId + "\',\'" + permitType + "\', \'" + startDate + "\', \'" + expDate + "\',\'" + expTime + "\',\'" + assignedSpaceType + "\', \'" + assignedZoneId + "\', " + driverId + " )\n");
+                Main.statement.executeUpdate(insertQuery);
+                System.out.println("New Permit added!");
+                System.out.println(status);
+//                System.out.println(status.equals("V"));
 
-            String insertQuery = ("INSERT into Permit (PermitID, PermitType, StartDate, ExpDate, ExpTime, AssignedSpaceType, AssignedZoneID, DriverID) VALUES (\'" + permitId + "\',\'" + permitType + "\', \'" + startDate + "\', \'" + expDate + "\',\'" + expTime + "\',\'" + assignedSpaceType + "\', \'" + assignedZoneId + "\', " + driverId + " )\n");
-            Main.statement.executeUpdate(insertQuery);
+                if(status.equals("V")){
+                    System.out.println(status);
+                    String insertPossesses = ("INSERT into Possesses (PermitID, DriverID) VALUES (\'" + permitId + "\',"+driverId + " )\n");
+                    Main.statement.executeUpdate(insertPossesses);
+                }
+                ResultSet sp=Main.statement.executeQuery("SELECT SpaceNumber,LotName FROM Space WHERE SpaceType = \'" + assignedSpaceType + "\' AND ZoneID =\'"+assignedZoneId+"\'order by SpaceNumber asc LIMIT 1;");
+                if(sp.next()){
+                    number = sp.getInt("SpaceNumber");
+                    System.out.println(number);
+                    LotName = sp.getString("LotName");
+                    String insertComprises = ("INSERT into Comprises (PermitID, SpaceNumber,LotName,ZoneID) VALUES (\'" + permitId + "\',"+number + ",\'"+LotName+"\',\'"+assignedZoneId+"\')\n");
+                    Main.statement.executeUpdate(insertComprises);
+                    String aStatus = "Occupied";
+                    Main.statement.executeUpdate("UPDATE Space SET AvailStatus = \'"+aStatus+"\' WHERE ZoneID = \'" + assignedZoneId +"\' AND LotName = \'"+LotName+"\' AND SpaceNumber = "+number);
+
+                }
+
+
+            }
+            else{
+                System.out.println("Driver ID does not exist. Please select valid Driver ID from below list");
+   //            System.out.println("Cannot add Permit info since DriverID does not exist. Please add Driver ID from the below given list.");
+                Driver.viewDriver();
+            }
+
+
 
 
         } catch (SQLException e) {
             System.out.println("Error: " + e.getMessage());
-            System.out.println("Cannot add Permit info since DriverID does not exist. Please add Driver ID from the below given list.");
-            Driver.viewDriver();
+            System.out.println("Cannot add Permit info since invalid information was added. Please add valid information.");
+//            Driver.viewDriver();
         }
 
 
@@ -120,7 +175,7 @@ public class Permit {
             switch (choice) {
                 case 1 -> deletePermitbyPermitID();
                 // case 2 -> deleteDriverByName();
-                case 3 -> {
+                case 2 -> {
                     System.out.println("Back to Permit menu");
                     exit = true;
                 }

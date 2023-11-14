@@ -60,7 +60,7 @@ public class Main {
                 switch (choice) {
                     case 1 -> Driver.driverOptions();
                     case 2 -> ParkingLot.lotOptions();
-//                    case 3 -> updateMenu();
+                    case 3 -> Permit.permitOptions();
                     case 4 -> Vehicle.vehicleOptions();
 //                    case 5 -> reportsMenu();
 //                    case 6 -> initialize();
