@@ -1,6 +1,7 @@
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class ParkingLot {
@@ -61,7 +62,7 @@ public class ParkingLot {
             switch (choice) {
                 case 1 -> insertParkingLot();
                 case 2 -> viewParkingLot();
-//                case 3 -> updateParkingLot();
+                case 3 -> updateParkingLot();
                 case 4 -> deleteParkingLot();
                 case 5 -> {
                     System.out.println("Back to home menu");
@@ -94,7 +95,7 @@ public class ParkingLot {
                 switch (choice) {
                     case 1 -> insertZones();
                     case 2 -> viewZones();
-//                    case 3 -> updateZones();
+                    case 3 -> updateZones();
                     case 4 -> deleteZones();
                     case 5 -> {
                         System.out.println("Back to home menu");
@@ -128,10 +129,11 @@ public class ParkingLot {
             switch (choice) {
                 case 1 -> insertSpaces();
                 case 2 -> viewSpaces();
-//                case 3 -> updateSpaces();
+                case 3 -> updateSpaces();
                 case 4 -> deleteSpaces();
                 case 5 -> {
                     System.out.println("Back to home menu");
+                    System.out.println();
                     exit = true;
                 }
                 default -> System.out.println("Invalid choice. Please try again.");
@@ -170,6 +172,9 @@ public class ParkingLot {
         }
 
         if (lotExists) {
+            Main.statement.executeUpdate("DELETE FROM Comprises WHERE LotName = \'" + lotName + "\';");
+            Main.statement.executeUpdate("DELETE FROM Space WHERE LotName = \'" + lotName + "\';");
+            Main.statement.executeUpdate("DELETE FROM Zone WHERE LotName = \'" + lotName + "\';");
             Main.statement.executeUpdate("DELETE FROM ParkingLot WHERE LotName = \'" + lotName + "\';");
             System.out.println("Parking Lot with Name " + lotName + " deleted successfully.");
         } else {
@@ -186,12 +191,25 @@ public class ParkingLot {
         String lotName = scanner.nextLine();
         System.out.println("Enter the zone: ");
         String zone = scanner.nextLine();
-        Main.statement.executeUpdate("INSERT INTO  Zone (LotName,ZoneID) VALUES (\'"+lotName+"\',\'"+zone+"\')");
-        System.out.println("Zone was assigned in the given Parking Lot");
-
+        boolean lotExists = false;
+        ResultSet rs = Main.statement.executeQuery("SELECT * FROM ParkingLot WHERE LotName = \'" + lotName + "\'");
+        if (rs.next()) {
+            lotExists = true;
+        }
+        if(lotExists){
+            Main.statement.executeUpdate("INSERT INTO  Zone (LotName,ZoneID) VALUES (\'"+lotName+"\',\'"+zone+"\')");
+            System.out.println("Zone was assigned in the given Parking Lot");
+        }else {
+            System.out.println("Incorrect lot name entered. Please select from the below lot names");
+            ResultSet names = Main.statement.executeQuery("SELECT LotName FROM ParkingLot;");
+            while (names.next()) {
+                System.out.println(names.getString("LotName"));
+            }
+            System.out.println();
+        }
     }
     private static void viewZones() throws SQLException {
-        String query = "Select * from Zones";
+        String query = "Select * from Zone";
         PreparedStatement myStmt = Main.connection.prepareStatement(query);
         ResultSet rs = myStmt.executeQuery();
         DBTablePrinter.printResultSet(rs);
@@ -221,15 +239,32 @@ public class ParkingLot {
         }
     }
     private static void insertSpaces() throws SQLException {
-        System.out.println("Enter the Lot Name where the zone is : ");
+        System.out.println("Enter the Lot Name where the space is : ");
         String lotName = scanner.nextLine();
         System.out.println("Enter the zone: ");
         String zone = scanner.nextLine();
         System.out.println("Enter the space number: ");
         int number = Integer.parseInt(scanner.nextLine());
-        String query = "INSERT INTO Space (SpaceNumber, LotName, ZoneID) VALUES (" + number + ", '" + lotName + "', '" + zone + "')";
-        Main.statement.executeUpdate(query);
-        System.out.println("Space Number was inserted in the given Parking Lot");
+        System.out.println("Enter the Avaibility Status: ");
+        String status = scanner.nextLine();
+        boolean zoneExists = false;
+        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Zone WHERE LotName = \'" + lotName + "\' and ZoneID = \'" + zone +"\'");
+        if (rs.next()) {
+            zoneExists = true;
+        }
+        if(zoneExists){
+            String query = "INSERT INTO Space (SpaceNumber, LotName, ZoneID,AvailStatus) VALUES ("+ number + " , \'" + lotName + "\', \'" + zone + "\',\'"+status+"\')";
+            Main.statement.executeUpdate(query);
+            System.out.println("Space Number was inserted in the given Parking Lot");
+        }else {
+            System.out.println("Incorrect Zone entered. Please select from the below Zones");
+            ResultSet name = Main.statement.executeQuery("SELECT ZoneID, LotName FROM Zone;");
+            while (name.next()) {
+                System.out.println("Zone = "+name.getString("ZoneID")+" Lot = "+name.getString("LotName"));
+            }
+            System.out.println();
+        }
+
     }
     private static void viewSpaces() throws SQLException {
         String query = "Select * from Space";
@@ -241,30 +276,400 @@ public class ParkingLot {
     private static void deleteSpaces() throws SQLException {
         System.out.println("Enter Space Number To Be Deleted: ");
         int number = Integer.parseInt(scanner.nextLine());
+        scanner.nextLine();
         System.out.println("Enter the Zone from where the Space Number needs To Be Deleted: ");
         String zone = scanner.nextLine();
         System.out.println("Enter the Parking Lot from where the Space Number needs To Be Deleted: ");
         String lotName = scanner.nextLine();
 
-        boolean zoneExists = false;
+        boolean spaceExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Space WHERE LotName = \'" + lotName + "\' and ZoneID = \'" + zone +"\' and SpaceNumber = "+number);
         if (rs.next()) {
-            zoneExists = true;
+            spaceExists = true;
         }
 
-        if (zoneExists) {
+        if (spaceExists) {
             Main.statement.executeUpdate("DELETE FROM Space WHERE LotName = \'" + lotName + "\' and ZoneID = \'" + zone +"\' and SpaceNumber = "+number);
             System.out.println("Space Number "+ number + " with Zone ID " + zone + " from Lot " +lotName + " deleted successfully.");
         } else {
             System.out.println("Incorrect Space entered. Please select from the below Spaces");
             ResultSet name = Main.statement.executeQuery("SELECT SpaceNumber,ZoneID, LotName FROM Space;");
             while (name.next()) {
-                System.out.println("Space Number = "+name.getString("SpaceNumber")+" Zone = "+name.getString("ZoneID")+" Lot = "+name.getString("LotName"));
+                System.out.println("Space Number = "+name.getInt("SpaceNumber")+" Zone = "+name.getString("ZoneID")+" Lot = "+name.getString("LotName"));
             }
             System.out.println();
         }
     }
 
-    private static void updateDriver() {
+    private static void updateParkingLot() throws SQLException {
+        boolean exit = false;
+        while (!exit) {
+            System.out.println("\n1. Update Parking Lot name");
+            System.out.println("2. Update Parking Lot address");
+            System.out.println("3. Update number of spaces");
+            System.out.println("4. Update number of zones");
+            System.out.println("5. Return to the Parking Lot screen");
+
+            int choice;
+            while (true) {
+                try {
+                    System.out.print("Enter your choice: ");
+                    choice = Integer.parseInt(scanner.nextLine());
+                    break;
+                } catch (Exception e) {
+                    System.out.println("\nPlease enter a valid choice (numerical)");
+                }
+            }
+
+            switch (choice) {
+                case 1 -> {
+                    String name = getParkingLotDetails();
+                    System.out.println("\nEnter new Parking Lot name: ");
+                    String newName = scanner.nextLine();
+                    scanner.nextLine();
+
+                    if (doesParkingLotExist(newName)){
+                        System.out.println("Parking Lot already exists. Please try again.");
+                    }else {
+                        Main.statement.executeUpdate("UPDATE ParkingLot SET LotName = \'" + newName + "\' WHERE LotName = \'" + name + "\';");
+                        System.out.println("Parking Lot updated successfully.");
+                    }
+                }
+                case 2 -> {
+                    String name = getParkingLotDetails();
+                    System.out.println("\nEnter new Parking Lot address: ");
+                    String newAddress = scanner.nextLine();
+                    Main.statement.executeUpdate("UPDATE ParkingLot SET Address = \'" + newAddress + "\' WHERE LotName = \'" + name + "\';");
+                    System.out.println("Parking Lot address  updated successfully.");
+                }
+                case 3 -> {
+                    String name = getParkingLotDetails();
+                    System.out.println("\nEnter new number of spaces : ");
+                    Integer newNumSpace = scanner.nextInt();
+                    Main.statement.executeUpdate("UPDATE ParkingLot SET NumSpace = " + newNumSpace + " WHERE LotName = \'" + name + "\';");
+                    System.out.println("Number of spaces updated successfully.");
+                }
+                case 4 -> {
+                    String name = getParkingLotDetails();
+                    System.out.println("\nEnter new number of zones : ");
+                    Integer newNumZone = scanner.nextInt();
+                    Main.statement.executeUpdate("UPDATE ParkingLot SET NumZone = " + newNumZone + " WHERE LotName = \'" + name + "\';");
+                    System.out.println("Number of zones updated successfully.");
+                }
+                case 5 -> {
+                    System.out.println("Back to Parking Lot menu");
+                    exit = true;
+                }
+                default -> System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+    private static String getParkingLotDetails() throws SQLException {
+        boolean flag = false;
+        String name = null;
+        while (!flag) {
+            System.out.println("\nEnter Parking Lot name to be updated: ");
+            name = scanner.nextLine();
+            scanner.nextLine();
+
+            if (!doesParkingLotExist(name)) {
+                System.out.println("Incorrect Parking Lot entered. Please select name from the below Parking Lot");
+                ResultSet names = Main.statement.executeQuery("SELECT LotName FROM ParkingLot;");
+                while (names.next()) {
+                    System.out.println(names.getString("LotName").toString());
+                }
+                System.out.println();
+            }else{
+                flag = true;
+            }
+        }
+        return name;
+    }
+
+    private static boolean doesParkingLotExist(String name) throws SQLException {
+        boolean lotExists = false;
+        ResultSet rs = Main.statement.executeQuery("SELECT * FROM ParkingLot WHERE LotName = \'" + name+"\'");
+        if (rs.next()) {
+            lotExists = true;
+        }
+        return lotExists;
+    }
+    private static void updateZones() throws SQLException {
+        boolean exit = false;
+        while (!exit) {
+            System.out.println("\n1. Update Zone ID");
+            System.out.println("2. Update Lot name");
+            System.out.println("3. Return to the Parking Lot screen");
+
+            int choice;
+            while (true) {
+                try {
+                    System.out.print("Enter your choice: ");
+                    choice = Integer.parseInt(scanner.nextLine());
+                    break;
+                } catch (Exception e) {
+                    System.out.println("\nPlease enter a valid choice (numerical)");
+                }
+            }
+
+            switch (choice) {
+                case 1 -> {
+                    ArrayList zone = getZoneDetails();
+                    String name =(String) zone.get(0);
+                    String id = (String) zone.get(1);
+                    System.out.println("\nEnter new Zone ID: ");
+                    String newID = scanner.nextLine();
+
+                    if (doesZoneExist(name,newID)){
+                        System.out.println("Zone already exists. Please try again.");
+                    }else {
+
+                        Main.statement.executeUpdate("UPDATE Zone SET ZoneID = \'" + newID + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\'");
+                        System.out.println("Parking Lot updated successfully.");
+                    }
+                }
+                case 2 -> {
+                    ArrayList zone = getZoneDetails();
+                    String name =(String) zone.get(0);
+                    String id = (String) zone.get(1);
+                    System.out.println("\nEnter new Lot name: ");
+                    String newLot = scanner.nextLine();
+
+                    if (doesZoneExist(newLot,id)){
+                        System.out.println("Zone already exists. Please try again.");
+                    }else {
+                        boolean zoneExists = false;
+                        ResultSet rs = Main.statement.executeQuery("SELECT * FROM ParkingLot WHERE LotName = \'" + newLot + "\'");
+                        if (rs.next()) {
+                            zoneExists = true;
+                        }
+                        if(zoneExists){
+                            Main.statement.executeUpdate("UPDATE Zone SET LotName = \'" + newLot + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\'");
+                            System.out.println("Parking Lot and zones updated successfully.");
+                        }else {
+                            System.out.println("Incorrect Parking Lot entered. Please select from the below Lots");
+                            ResultSet names = Main.statement.executeQuery("SELECT  LotName FROM ParkingLot;");
+                            while (names.next()) {
+                                System.out.println(" Lot = "+names.getString("LotName"));
+                            }
+                            System.out.println();
+                        }
+
+                    }
+                }
+
+                case 3 -> {
+                    System.out.println("Back to Parking Lot menu");
+                    exit = true;
+                }
+                default -> System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+    private static ArrayList getZoneDetails() throws SQLException {
+        boolean flag = false;
+        String name = null;
+        String zone = null;
+        while (!flag) {
+            System.out.println("\nEnter Parking Lot name where zone needs to be updated: ");
+            name = scanner.nextLine();
+            System.out.println("\nEnter zone ID that needs to be updated: ");
+            zone = scanner.nextLine();
+
+            if (!doesZoneExist(name,zone)) {
+                System.out.println("Incorrect Parking Lot entered. Please select name from the below Parking Lot");
+                ResultSet names = Main.statement.executeQuery("SELECT * FROM Zone;");
+                while (names.next()) {
+                    System.out.println("Lot name = "+names.getString("LotName").toString()+ " Zone ID = "+ names.getString("ZoneID").toString());
+                }
+                System.out.println();
+            }else{
+                flag = true;
+            }
+        }
+        ArrayList<String> zones = new ArrayList<String>();
+        zones.add(name);
+        zones.add(zone);
+        return zones;
+    }
+
+    private static boolean doesZoneExist(String name,String zone) throws SQLException {
+        boolean zoneExists = false;
+        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Zone WHERE ZoneID = \'" + zone +"\' AND LotName = \'"+name+"\'");
+        if (rs.next()) {
+            zoneExists = true;
+        }
+        return zoneExists;
+    }
+    private static void updateSpaces() throws SQLException {
+        boolean exit = false;
+        while (!exit) {
+            System.out.println("\n1. Update Space Number");
+            System.out.println("2. Update Lot name");
+            System.out.println("3. Update Zone ID");
+            System.out.println("4. Update Availability status");
+            System.out.println("5. Update Space Type");
+            System.out.println("6. Return to the Parking Lot screen");
+
+            int choice;
+            while (true) {
+                try {
+                    System.out.print("Enter your choice: ");
+                    choice = Integer.parseInt(scanner.nextLine());
+                    break;
+                } catch (Exception e) {
+                    System.out.println("\nPlease enter a valid choice (numerical)");
+                }
+            }
+
+            switch (choice) {
+                case 1 -> {
+                    ArrayList space = getSpaceDetails();
+                    String name =(String) space.get(0);
+                    String id = (String) space.get(1);
+                    Integer number = (Integer) space.get(2);
+                    System.out.println("\nEnter new Space Number: ");
+                    Integer newNumber = scanner.nextInt();
+                    scanner.nextLine();
+
+                    if (doesSpaceExist(name,id,newNumber)){
+                        System.out.println("Space already exists. Please try again.");
+                    }else {
+                        Main.statement.executeUpdate("UPDATE Space SET SpaceNumber = \'" + newNumber + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\' AND SpaceNumber = "+number);
+                        System.out.println("Parking Lot Space updated successfully.");
+
+                    }
+                }
+                case 2 -> {
+                    ArrayList space = getSpaceDetails();
+                    String name =(String) space.get(0);
+                    String id = (String) space.get(1);
+                    Integer number = (Integer) space.get(2);
+                    System.out.println("\nEnter new Lot Name: ");
+                    String newName = scanner.nextLine();
+
+                    if (doesSpaceExist(newName,id,number)){
+                        System.out.println("Space already exists. Please try again.");
+                    }else {
+                        boolean zoneExists = false;
+                        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Zone WHERE LotName = \'" + newName + "\' and ZoneID = \'" + id +"\'");
+                        if (rs.next()) {
+                            zoneExists = true;
+                        }
+                        if(zoneExists){
+                            Main.statement.executeUpdate("UPDATE Space SET LotName = \'" + newName + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\' AND SpaceNumber = "+number);
+                            System.out.println("Parking Lot Space updated successfully.");
+                        }else {
+                            System.out.println("Incorrect Parking Lot entered. Please select from the below Lots");
+                            ResultSet names = Main.statement.executeQuery("SELECT  LotName,ZoneID FROM Zone;");
+                            while (names.next()) {
+                                System.out.println(" Lot = "+names.getString("LotName")+" zone = "+names.getString("ZoneID"));
+                            }
+                            System.out.println();
+                        }
+
+                    }
+                }
+                case 3 -> {
+                    ArrayList space = getSpaceDetails();
+                    String name =(String) space.get(0);
+                    String id = (String) space.get(1);
+                    Integer number = (Integer) space.get(2);
+                    System.out.println("\nEnter new Zone ID: ");
+                    String newId = scanner.nextLine();
+
+                    if (doesSpaceExist(name,newId,number)){
+                        System.out.println("Space already exists. Please try again.");
+                    }else {
+                        boolean zoneExists = false;
+                        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Zone WHERE LotName = \'" + name + "\' and ZoneID = \'" + newId +"\'");
+                        if (rs.next()) {
+                            zoneExists = true;
+                        }
+                        if(zoneExists){
+                            Main.statement.executeUpdate("UPDATE Space SET ZoneID = \'" + newId + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\' AND SpaceNumber = "+number);
+                            System.out.println("Parking Lot Space updated successfully.");
+                        }else {
+                            System.out.println("Incorrect Zone ID entered. Please select from the below zones");
+                            ResultSet names = Main.statement.executeQuery("SELECT  ZoneID FROM Zone WHERE LotName = \'"+name+"\';");
+                            while (names.next()) {
+                                System.out.println(" Zone = "+names.getString("ZoneID"));
+                            }
+                            System.out.println();
+                        }
+
+                    }
+                }
+                case 4 -> {
+                    ArrayList space = getSpaceDetails();
+                    String name =(String) space.get(0);
+                    String id = (String) space.get(1);
+                    Integer number = (Integer) space.get(2);
+                    System.out.println("\nEnter new Availability status: ");
+                    String newStatus = scanner.nextLine();
+                    Main.statement.executeUpdate("UPDATE Space SET AvailStatus = \'" + newStatus + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\' AND SpaceNumber = "+number);
+                    System.out.println("Parking Lot Space updated successfully.");
+                }
+                case 5 -> {
+                    ArrayList space = getSpaceDetails();
+                    String name =(String) space.get(0);
+                    String id = (String) space.get(1);
+                    Integer number = (Integer) space.get(2);
+                    System.out.println("\nEnter new Space Type: ");
+                    String newType = scanner.nextLine();
+                    Main.statement.executeUpdate("UPDATE Space SET SpaceType = \'" + newType + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\' AND SpaceNumber = "+number);
+                    System.out.println("Parking Lot Space updated successfully.");
+                }
+
+                case 6 -> {
+                    System.out.println("Back to Parking Lot menu");
+                    exit = true;
+                }
+                default -> System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+    private static ArrayList getSpaceDetails() throws SQLException {
+        boolean flag = false;
+        String name = null;
+        String zone = null;
+        Integer number = null;
+        while (!flag) {
+            System.out.println("\nEnter Parking Lot name where space needs to be updated: ");
+            name = scanner.nextLine();
+            System.out.println("\nEnter zone ID that needs to be updated: ");
+            zone = scanner.nextLine();
+            System.out.println("\nEnter Space Number that needs to be updated: ");
+            number = Integer.parseInt(scanner.nextLine());
+
+
+            if (!doesSpaceExist(name,zone,number)) {
+                System.out.println("Incorrect Space entered. Please select space from the below Spaces");
+                ResultSet names = Main.statement.executeQuery("SELECT * FROM Space;");
+                while (names.next()) {
+                    System.out.println("Lot name = "+names.getString("LotName").toString()+ " Zone ID = "+ names.getString("ZoneID").toString()+ " Space Number = "+ names.getInt("SpaceNumber"));
+                }
+                System.out.println();
+            }else{
+                flag = true;
+            }
+        }
+        ArrayList<Object> spaces = new ArrayList<Object>();
+        spaces.add(name);
+        spaces.add(zone);
+        spaces.add(number);
+        return spaces;
+    }
+
+    private static boolean doesSpaceExist(String name,String zone, Integer number) throws SQLException {
+        boolean spaceExists = false;
+        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Space WHERE SpaceNumber = "+number+" AND ZoneID = \'" + zone +"\' AND LotName = \'"+name+"\'");
+        if (rs.next()) {
+            spaceExists = true;
+        }
+        return spaceExists;
     }
 }
+
+
+
