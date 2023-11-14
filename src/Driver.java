@@ -60,7 +60,7 @@ public class Driver {
         }
     }
 
-    private static void viewDriver() throws SQLException {
+    public static void viewDriver() throws SQLException {
         String query = "Select * from Driver";
         PreparedStatement myStmt = Main.connection.prepareStatement(query);
         ResultSet rs = myStmt.executeQuery();
