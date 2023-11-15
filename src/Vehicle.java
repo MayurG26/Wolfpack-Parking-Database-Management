@@ -33,7 +33,7 @@ public class Vehicle {
                 case 3 -> updateVehicle();
                 case 4 -> deleteVehicle();
                 case 5 -> {
-                    System.out.println("Back to home menu");
+                    System.out.println("<-- Back to home menu");
                     exit = true;
                 }
                 default -> System.out.println("\nInvalid choice. Please try again.");
@@ -67,11 +67,8 @@ public class Vehicle {
         }
     }
 
-    private static void viewVehicle() throws SQLException {
-        String query = "SELECT * FROM Vehicle";
-        PreparedStatement myStmt = Main.connection.prepareStatement(query);
-        ResultSet rs = myStmt.executeQuery();
-        DBTablePrinter.printResultSet(rs);
+    public static void viewVehicle() throws SQLException {
+        Main.printTable("Vehicle");
     }
 
     private static void deleteVehicle() throws SQLException {
@@ -183,7 +180,7 @@ public class Vehicle {
         return licenseNo;
     }
 
-    private static boolean doesLicenseNoExist(String licenseNo) throws SQLException {
+    public static boolean doesLicenseNoExist(String licenseNo) throws SQLException {
         boolean vehicleExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Vehicle WHERE LicenseNo = \'" + licenseNo+"\';");
         if (rs.next()) {
