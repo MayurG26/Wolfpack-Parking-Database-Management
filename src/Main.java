@@ -1,22 +1,22 @@
 //package src;
+
 import org.apache.ibatis.jdbc.ScriptRunner;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.sql.*;
+import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 
 public class Main {
     static final String USERNAME = "pnavale";
     static final String PW = "prach04";
     static final String jdbcURL = "jdbc:mariadb://classdb2.csc.ncsu.edu:3306/pnavale";
-    // Put your oracle ID and password here
 
     public static Connection connection = null;
     public static Statement statement = null;
 
     public static final ResultSet result = null;
-//    public static final ResultSet result = null;
 
     /**
      * This function prints a menu to the system console.
@@ -24,6 +24,7 @@ public class Main {
      * The first step must always be to load the database ("Initialize/Reload Database"),
      * if it is not already loaded. Then one can either look at reports,
      * handle payments, or otherwise interact with the database.
+     *
      * @param args
      */
     public static void main(String[] args) {
@@ -34,7 +35,7 @@ public class Main {
             // Display the main menu
             boolean exit = false;
             while (!exit) {
-                System.out.println("Menu:");
+                System.out.println("\nMenu:");
                 System.out.println("1. Driver");
                 System.out.println("2. Parking Lot");
                 System.out.println("3. Permit");
@@ -45,13 +46,12 @@ public class Main {
                 System.out.println("8. Exit()");
 
                 int choice;
-                while(true) {
+                while (true) {
                     try {
                         System.out.print("Enter your choice: ");
                         choice = Integer.parseInt(scanner.nextLine());
                         break;
-                    }
-                    catch(Exception e) {
+                    } catch (Exception e) {
                         System.out.println("Please enter a valid choice (numerical)");
                     }
                 }
@@ -62,7 +62,7 @@ public class Main {
                     case 2 -> ParkingLot.lotOptions();
                     case 3 -> Permit.permitOptions();
                     case 4 -> Vehicle.vehicleOptions();
-//                    case 5 -> reportsMenu();
+                    case 5 -> Citation.citationOptions();
 //                    case 6 -> initialize();
                     case 7 -> initialize();
                     case 8 -> exit = true;
@@ -98,6 +98,7 @@ public class Main {
 
     /**
      * Connects to the database.
+     *
      * @throws ClassNotFoundException
      * @throws SQLException
      */
@@ -108,8 +109,7 @@ public class Main {
             statement = connection.createStatement();
         } catch (SQLException e) {
             throw new SQLException("Could not connect to database.");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new ClassNotFoundException("Class for driver not found.");
         }
     }
@@ -138,6 +138,17 @@ public class Main {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static boolean isValidDateTimeFormat(String inputString, String expectedFormat) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(expectedFormat);
+            formatter.parse(inputString);
+            return true;
+        } catch (Exception e) {
+            System.out.println("Incorrect format entered, please try again with " + expectedFormat + " format.");
+            return false;
         }
     }
 }

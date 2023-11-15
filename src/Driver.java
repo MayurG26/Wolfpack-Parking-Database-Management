@@ -230,7 +230,7 @@ public class Driver {
         return driverId;
     }
 
-    private static boolean doesDriverIDExist(BigInteger driverId) throws SQLException {
+    public static boolean doesDriverIDExist(BigInteger driverId) throws SQLException {
         boolean driverExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Driver WHERE DriverID = " + driverId);
         if (rs.next()) {
