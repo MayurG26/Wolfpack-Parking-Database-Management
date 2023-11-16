@@ -63,7 +63,7 @@ public class Main {
                     case 3 -> Permit.permitOptions();
                     case 4 -> Vehicle.vehicleOptions();
                     case 5 -> Citation.citationOptions();
-//                    case 6 -> initialize();
+                    case 6 -> Report.ReportsMenu();
                     case 7 -> initialize();
                     case 8 -> exit = true;
                     default -> System.out.println("Invalid choice. Please try again.");

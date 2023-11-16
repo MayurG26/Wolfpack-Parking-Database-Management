@@ -266,7 +266,7 @@ public class ParkingLot {
             System.out.println();
         }
     }
-    private static void insertSpaces() throws SQLException {
+    public static void insertSpaces() throws SQLException {
         System.out.println("Enter the Lot Name where the space is : ");
         String lotName = scanner.nextLine();
         System.out.println("Enter the zone id: ");
@@ -555,7 +555,7 @@ public class ParkingLot {
         return zones;
     }
 
-    private static boolean doesZoneExist(String name,String zone) throws SQLException {
+    public static boolean doesZoneExist(String name,String zone) throws SQLException {
         boolean zoneExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Zone WHERE ZoneID = \'" + zone +"\' AND LotName = \'"+name+"\'");
         if (rs.next()) {

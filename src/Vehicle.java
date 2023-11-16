@@ -250,7 +250,7 @@ public class Vehicle {
                 ResultSet rs = Main.statement.executeQuery("SELECT Status FROM Driver WHERE DriverID = " + driverID + ";");
                 if (rs.next()) {
                     status = rs.getString("Status");
-                    String countQuery = "Select Count(PermitID) AS CountP from Vehicle WHERE DriverID = " + driverID;
+                    String countQuery = "Select Count(PermitID) AS CountP from Vehicle WHERE PermitID = \'" + permitID+"\';";
                     ResultSet cns = Main.statement.executeQuery(countQuery);
                     if (cns.next()) {
                         cs = cns.getInt("CountP");
