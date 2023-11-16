@@ -416,7 +416,6 @@ public class Citation {
         while (!flag) {
             System.out.println("\nEnter citation number to be updated: ");
             citationNumber = scanner.nextLine();
-
             if (!doesCitationNoExist(citationNumber)) {
                 System.out.println("Incorrect citation number entered. Please select from the below license numbers:");
                 ResultSet citations = Main.statement.executeQuery("SELECT CNumber FROM Citation;");
@@ -431,7 +430,17 @@ public class Citation {
         return citationNumber;
     }
 
-    private static BigInteger getDriverIdFromLicenseNo(String licenseNo) throws SQLException {
+    public static List<String> getCitationNumberFromLicense(String licenseNo) throws SQLException {
+        List<String> citationNos = new ArrayList<>();
+        boolean flag = false;
+        ResultSet citations = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE LicenseNo = \'" + licenseNo + "\';");
+        while (citations.next()) {
+            citationNos.add(citations.getString("CNumber"));
+        }
+        return citationNos;
+    }
+
+    public static BigInteger getDriverIdFromLicenseNo(String licenseNo) throws SQLException {
         BigInteger driverId = null;
         ResultSet ids = Main.statement.executeQuery("Select DriverID from Permit NATURAL RIGHT OUTER JOIN Vehicle WHERE Vehicle.LicenseNo = \'" + licenseNo + "\';");
         while (ids.next()) {
@@ -444,7 +453,7 @@ public class Citation {
         return driverId;
     }
 
-    private static boolean doesCitationNoExist(String cNumber) throws SQLException {
+    public static boolean doesCitationNoExist(String cNumber) throws SQLException {
         boolean citationExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Citation WHERE CNumber = \'" + cNumber + "\';");
         if (rs.next()) {
@@ -453,7 +462,7 @@ public class Citation {
         return citationExists;
     }
 
-    private static String getColumnDetails(String columnName, String cNumber) throws SQLException {
+    public static String getColumnDetails(String columnName, String cNumber) throws SQLException {
         String result = null;
         ResultSet citations = Main.statement.executeQuery("SELECT " + columnName + " FROM Citation WHERE CNumber = \'" + cNumber + "\';");
         while (citations.next()) {
