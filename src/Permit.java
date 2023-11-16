@@ -19,13 +19,11 @@ public class Permit {
     public static void permitOptions() throws SQLException {
         boolean exit = false;
         while (!exit) {
-            System.out.println("1. Insert Permit information");
+            System.out.println("\n1. Insert Permit information");
             System.out.println("2. View all Permit information");
             System.out.println("3. Update Permit information");
             System.out.println("4. Delete Permit information");
             System.out.println("5. Return to the home screen");
-            System.out.println("Select suitable option");
-            System.out.println("Choose what operation you want to perform");
 
             int choice;
             while (true) {
@@ -57,6 +55,7 @@ public class Permit {
         boolean flag = false;
         long driverId;
         int number;
+        String licenseNo;
         String startDate, expDate, expTime, assignedLot = null;
         System.out.println("Enter Permit ID: ");
         String permitId = scanner.nextLine();
@@ -89,8 +88,13 @@ public class Permit {
         System.out.println("Enter Space Type (Electric/ Handicap/ Compact Car/ Regular):");
         String assignedSpaceType = scanner.nextLine();
 
-        System.out.println("Enter Car License Number: ");
-        String licenseNo = scanner.nextLine(); //For assign vehicle to permit
+        do {
+            System.out.println("Enter Car License Number: ");
+            licenseNo = scanner.nextLine();
+            if (!Vehicle.doesLicenseNoExist(licenseNo))
+                System.out.println("Incorrect license number entered. Please try again.");
+        } while (!Vehicle.doesLicenseNoExist(licenseNo));
+        Vehicle.assignVehicleToPermit(permitId,licenseNo);
 
         do {
             System.out.println("Enter Start Date (YYYY-MM-DD): ");

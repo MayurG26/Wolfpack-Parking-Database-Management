@@ -453,7 +453,7 @@ public class Citation {
         return driverId;
     }
 
-    private static boolean doesCitationNoExist(String cNumber) throws SQLException {
+    public static boolean doesCitationNoExist(String cNumber) throws SQLException {
         boolean citationExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Citation WHERE CNumber = \'" + cNumber + "\';");
         if (rs.next()) {
@@ -462,7 +462,7 @@ public class Citation {
         return citationExists;
     }
 
-    private static String getColumnDetails(String columnName, String cNumber) throws SQLException {
+    public static String getColumnDetails(String columnName, String cNumber) throws SQLException {
         String result = null;
         ResultSet citations = Main.statement.executeQuery("SELECT " + columnName + " FROM Citation WHERE CNumber = \'" + cNumber + "\';");
         while (citations.next()) {
