@@ -94,7 +94,7 @@ public class Permit {
             if (!Vehicle.doesLicenseNoExist(licenseNo))
                 System.out.println("Incorrect license number entered. Please try again.");
         } while (!Vehicle.doesLicenseNoExist(licenseNo));
-        Vehicle.assignVehicleToPermit(permitId,licenseNo);
+
 
         do {
             System.out.println("Enter Start Date (YYYY-MM-DD): ");
@@ -124,7 +124,7 @@ public class Permit {
         //Add options
         System.out.println("Enter Permit Type (residential/ commuter/ peak hours/ special event/ Park & Ride): ");
         String permitType = scanner.nextLine();
-        String insertQuery = ("INSERT into Permit (PermitID, PermitType, StartDate, ExpDate, ExpTime, AssignedSpaceType, AssignedZoneID, DriverID) VALUES (\'" + permitId + "\',\'" + permitType + "\', \'" + startDate + "\', \'" + expDate + "\',\'" + expTime + "\',\'" + assignedSpaceType + "\', \'" + assignedZoneId + "\', " + driverId + " )\n");
+        String insertQuery = ("INSERT into Permit (PermitID, PermitType, StartDate, ExpDate, ExpTime, AssignedSpaceType, AssignedZoneID,AssignedLot, DriverID) VALUES (\'" + permitId + "\',\'" + permitType + "\', \'" + startDate + "\', \'" + expDate + "\',\'" + expTime + "\',\'" + assignedSpaceType + "\', \'" + assignedZoneId + "\', \'"+assignedLot+"\'," + driverId + " )\n");
 
         try {
             String status = null;
@@ -136,26 +136,29 @@ public class Permit {
                 int cs = 0;
                 if (cns.next()) {
                     cs = cns.getInt("CountP");
-                    System.out.println(cs);
+//                    System.out.println(cs);
                 }
-                permitCountCondition(cs, status.toUpperCase(),insertQuery, permitType);
+                permitCountCondition(cs, status.toUpperCase(),insertQuery, permitType,permitId,licenseNo);
                 System.out.println(status);
 
                 if (status.equalsIgnoreCase("V")) {
-                    System.out.println(status);
+//                    System.out.println(status);
                     String insertPossesses = ("INSERT into Possesses (PermitID, DriverID) VALUES (\'" + permitId + "\'," + driverId + " )");
                     Main.statement.executeUpdate(insertPossesses);
                 }
                 ResultSet sp = Main.statement.executeQuery("SELECT SpaceNumber FROM Space WHERE SpaceType = \'" + assignedSpaceType + "\' AND ZoneID =\'" + assignedZoneId + "\' AND LotName = \'" + assignedLot + "\' AND AvailStatus = \'Available\' order by SpaceNumber asc LIMIT 1;");
                 if (sp.next()) {
                     number = sp.getInt("SpaceNumber");
-                    System.out.println(number + "-----");
+//                    System.out.println(number + "-----");
                     String insertComprises = ("INSERT into Comprises (PermitID, SpaceNumber,LotName,ZoneID) VALUES (\'" + permitId + "\'," + number + ",\'" + assignedLot + "\',\'" + assignedZoneId + "\')");
                     Main.statement.executeUpdate(insertComprises);
                     String aStatus = "Occupied";
                     Main.statement.executeUpdate("UPDATE Space SET AvailStatus = \'" + aStatus + "\' WHERE ZoneID = \'" + assignedZoneId + "\' AND LotName = \'" + assignedLot + "\' AND SpaceNumber = " + number);
 
                 } else {
+                    String aStatus = "Occupied";
+                    String query = "INSERT INTO Space (LotName, ZoneID,SpaceType,AvailStatus) VALUES (\'"+ assignedLot + "\' ,  \'" + assignedZoneId + "\',\'"+assignedSpaceType+"\',\'"+aStatus+"\')";
+                    Main.statement.executeUpdate(query);
                     System.out.println("Space number nahi bhetla");
                 }
             } else {
@@ -168,7 +171,7 @@ public class Permit {
         }
     }
 
-    public static void permitCountCondition(int cs, String status, String insertQuery, String permitType) throws SQLException {
+    public static void permitCountCondition(int cs, String status, String insertQuery, String permitType,String permitId,String licenseNo) throws SQLException {
         HashMap<String, Integer> hashMap = new HashMap<String, Integer>();
         hashMap.put("E", 2);
         hashMap.put("S", 1);
@@ -176,9 +179,11 @@ public class Permit {
         int expectedCount = hashMap.get(status);
         if (cs < expectedCount) {
             Main.statement.executeUpdate(insertQuery);
+            Vehicle.assignVehicleToPermit(permitId,licenseNo);
             System.out.println("New Permit added!");
-        } else if ((status == "E" || status =="S") && cs == expectedCount && (permitType.equalsIgnoreCase("special event") || permitType.equalsIgnoreCase("Park & Ride"))) {
+        } else if (cs == expectedCount && (status.equals("E") || status.equals("S"))   && (permitType.equalsIgnoreCase("special event") || permitType.equalsIgnoreCase("Park & Ride"))) {
             Main.statement.executeUpdate(insertQuery);
+            Vehicle.assignVehicleToPermit(permitId,licenseNo);
             System.out.println("New Permit added!");
         } else {
             System.out.println(CANNOT_ASSIGN_PERMIT_MESSAGE);
@@ -200,9 +205,8 @@ public class Permit {
 
         boolean exit = false;
         while (!exit) {
-            System.out.println("1. Delete driver information by Permit ID");
-            //System.out.println("2. Delete driver information by driver ID");
-            System.out.println("3. Return to the driver screen");
+            System.out.println("1. Delete permit information by Permit ID");
+            System.out.println("2. Return to the permit screen");
 
             int choice;
             while (true) {
@@ -217,7 +221,6 @@ public class Permit {
 
             switch (choice) {
                 case 1 -> deletePermitbyPermitID();
-                // case 2 -> deleteDriverByName();
                 case 2 -> {
                     System.out.println("Back to Permit menu");
                     exit = true;
@@ -272,8 +275,9 @@ public class Permit {
             System.out.println("5. Update Exp time");
             System.out.println("6. Update Assigned Space Type");
             System.out.println("7. Update Assigned Zone ID");
-            System.out.println("8. Update Driver ID");
-            System.out.println("9. Return to the Permit screen");
+            System.out.println("8. Update Assigned Lot");
+            System.out.println("9. Update Driver ID");
+            System.out.println("10. Return to the Permit screen");
 
             int choice;
             while (true) {
@@ -378,8 +382,20 @@ public class Permit {
                     }
 
                 }
-
                 case 8 -> {
+                    scanner = new Scanner(System.in);
+                    System.out.println("Enter Permit ID for type To Be Updated: ");
+                    String permitId = scanner.nextLine();
+                    System.out.println("Enter new Lot: ");
+                    String newAssignedLot = scanner.nextLine();
+                    if (doesPermitIDExist(permitId) == true) {
+                        Main.statement.executeUpdate("UPDATE Permit SET AssignedLot = \'" + newAssignedLot + "\' WHERE PermitID = \'" + permitId + "\';");
+                        System.out.println("Assigned Zone Id updated successfully.");
+                    }
+
+                }
+
+                case 9 -> {
                     scanner = new Scanner(System.in);
                     System.out.println("Enter Permit ID for type To Be Updated: ");
                     String permitId = scanner.nextLine();
@@ -413,7 +429,7 @@ public class Permit {
                     }
                 }
 
-                case 9 -> {
+                case 10 -> {
                     System.out.println("Back to driver menu");
                     exit = true;
                 }
