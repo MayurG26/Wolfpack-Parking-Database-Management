@@ -144,46 +144,34 @@ public class ParkingLot {
         System.out.println("Enter Lot Name: ");
         String lotName = scanner.nextLine();
         System.out.println("Enter Lot Address: ");
-        String lotAddress = scanner.nextLine();   //Integer.parseInt(scanner.nextLine())
-        //System.out.println("Enter Number of Spaces: ");
+        String lotAddress = scanner.nextLine();  ;
         int numSpaces;
         while (true) {
             try {
-                System.out.print("Enter number of spaces: ");
+                System.out.println("Enter number of spaces: ");
                 numSpaces = Integer.parseInt(scanner.nextLine());
                 break;
             } catch (Exception e) {
-                System.out.println("Please enter a number of spaces in numerical");
+                System.out.println("Please enter number of spaces in numerical");
             }
         }
-        //System.out.println("Enter Number of Zones: ");
-        //int numZones = scanner.nextInt();
-//        if (rs.next()) {
-//            lotExists = true;
-//        }
         int numZones;
-//        while (true) {
-//            try {
-//                System.out.print("Enter number of zones: ");
-//                numZones = Integer.parseInt(scanner.nextLine());
-//                break;
-//            } catch (Exception e) {
-//                System.out.println("Please enter a valid zone number (numerical)");
-//                System.out.println(e.getMessage());
-//            }
-//        }
         while (true) {
             try {
-                System.out.print("Enter number of zones: ");
+                System.out.println("Enter number of zones: ");
                 numZones = Integer.parseInt(scanner.nextLine());
                 break;
             } catch (Exception e) {
-                System.out.println("Please enter a number of zones in numerical");
+                System.out.println("Please enter number of zones in numerical");
             }
         }
-        Main.statement.executeUpdate("INSERT INTO  ParkingLot (LotName,Address,NumSpace,NumZone) VALUES (\'" + lotName + "\',\'" + lotAddress + "\'," + numZones + "," + numSpaces + ")");
-        System.out.println("New Parking Lot is added in the database");
-
+        if(!doesParkingLotExist(lotName)) {
+            Main.statement.executeUpdate("INSERT INTO  ParkingLot (LotName,Address,NumSpace,NumZone) VALUES (\'" + lotName + "\',\'" + lotAddress + "\'," + numSpaces + "," + numZones + ")");
+            System.out.println("New Parking Lot is added in the database ");
+        }
+        else{
+            System.out.println("Parking lot with the given name already exists!");
+        }
     }
 
     private static void viewParkingLot() throws SQLException {
@@ -204,6 +192,7 @@ public class ParkingLot {
         }
 
         if (lotExists) {
+            Main.statement.executeUpdate("DELETE FROM Encompasses WHERE LotName = \'" + lotName + "\';");
             Main.statement.executeUpdate("DELETE FROM Comprises WHERE LotName = \'" + lotName + "\';");
             Main.statement.executeUpdate("DELETE FROM Space WHERE LotName = \'" + lotName + "\';");
             Main.statement.executeUpdate("DELETE FROM Zone WHERE LotName = \'" + lotName + "\';");
@@ -264,6 +253,7 @@ public class ParkingLot {
         }
 
         if (zoneExists) {
+            Main.statement.executeUpdate("DELETE FROM Comprises WHERE LotName = \'" + lotName + "\'and ZoneID = \'" + zone +"\';");
             Main.statement.executeUpdate("DELETE FROM Space WHERE LotName = \'" + lotName + "\' and ZoneID = \'" + zone +"\';");
             Main.statement.executeUpdate("DELETE FROM Zone WHERE LotName = \'" + lotName + "\' and ZoneID = \'" + zone +"\';");
             System.out.println("Zone with ID " + zone + " from Lot " +lotName + " deleted successfully.");
@@ -281,8 +271,16 @@ public class ParkingLot {
         String lotName = scanner.nextLine();
         System.out.println("Enter the zone id: ");
         String zone = scanner.nextLine();
-        System.out.println("Enter the space number: ");
-        int number = Integer.parseInt(scanner.nextLine());
+        int number;
+        while (true) {
+            try {
+                System.out.println("Enter the space number: ");
+                number = Integer.parseInt(scanner.nextLine());
+                break;
+            } catch (Exception e) {
+                System.out.println("Please enter space number in numerical");
+            }
+        }
         System.out.println("Enter the Avaibility Status: ");
         String status = scanner.nextLine();
         boolean zoneExists = false;
@@ -316,8 +314,16 @@ public class ParkingLot {
     }
 
     private static void deleteSpaces() throws SQLException {
-        System.out.println("Enter Space Number To Be Deleted: ");
-        int number = Integer.parseInt(scanner.nextLine());
+        int number;
+        while (true) {
+            try {
+                System.out.println("Enter Space Number To Be Deleted: ");
+                number = Integer.parseInt(scanner.nextLine());
+                break;
+            } catch (Exception e) {
+                System.out.println("Please enter space number in numerical");
+            }
+        }
         System.out.println("Enter the Zone id from where the Space Number needs To Be Deleted: ");
         String zone = scanner.nextLine();
         System.out.println("Enter the Parking Lot from where the Space Number needs To Be Deleted: ");
@@ -330,6 +336,7 @@ public class ParkingLot {
         }
 
         if (spaceExists) {
+            Main.statement.executeUpdate("DELETE FROM Comprises WHERE LotName = \'" + lotName + "\'and ZoneID = \'" + zone +"\' and SpaceNumber = "+number);
             Main.statement.executeUpdate("DELETE FROM Space WHERE LotName = \'" + lotName + "\' and ZoneID = \'" + zone +"\' and SpaceNumber = "+number);
             System.out.println("Space Number "+ number + " with Zone ID " + zone + " from Lot " +lotName + " deleted successfully.");
         } else {
@@ -384,15 +391,31 @@ public class ParkingLot {
                 }
                 case 3 -> {
                     String name = getParkingLotDetails();
-                    System.out.println("\nEnter new number of spaces : ");
-                    Integer newNumSpace = scanner.nextInt();
+                    Integer newNumSpace;
+                    while (true) {
+                        try {
+                            System.out.println("Enter new number of spaces: ");
+                            newNumSpace = Integer.parseInt(scanner.nextLine());
+                            break;
+                        } catch (Exception e) {
+                            System.out.println("Please enter number of spaces in numerical");
+                        }
+                    }
                     Main.statement.executeUpdate("UPDATE ParkingLot SET NumSpace = " + newNumSpace + " WHERE LotName = \'" + name + "\';");
                     System.out.println("Number of spaces updated successfully.");
                 }
                 case 4 -> {
                     String name = getParkingLotDetails();
-                    System.out.println("\nEnter new number of zones : ");
-                    Integer newNumZone = scanner.nextInt();
+                    Integer newNumZone;
+                    while (true) {
+                        try {
+                            System.out.println("Enter new number of zones: ");
+                            newNumZone = Integer.parseInt(scanner.nextLine());
+                            break;
+                        } catch (Exception e) {
+                            System.out.println("Please enter number of zones in numerical");
+                        }
+                    }
                     Main.statement.executeUpdate("UPDATE ParkingLot SET NumZone = " + newNumZone + " WHERE LotName = \'" + name + "\';");
                     System.out.println("Number of zones updated successfully.");
                 }
@@ -410,7 +433,6 @@ public class ParkingLot {
         while (!flag) {
             System.out.println("\nEnter Parking Lot name to be updated: ");
             name = scanner.nextLine();
-            scanner.nextLine();
 
             if (!doesParkingLotExist(name)) {
                 System.out.println("Incorrect Parking Lot entered. Please select name from the below Parking Lot");
@@ -520,7 +542,7 @@ public class ParkingLot {
                 System.out.println("Incorrect Parking Lot entered. Please select name from the below Parking Lot");
                 ResultSet names = Main.statement.executeQuery("SELECT * FROM Zone;");
                 while (names.next()) {
-                    System.out.println("Lot name = "+names.getString("LotName").toString()+ " Zone ID = "+ names.getString("ZoneID").toString());
+                    System.out.println("Lot name = "+names.getString("LotName").toString()+ ", Zone ID = "+ names.getString("ZoneID").toString());
                 }
                 System.out.println();
             }else{
@@ -568,9 +590,16 @@ public class ParkingLot {
                     String name =(String) space.get(0);
                     String id = (String) space.get(1);
                     Integer number = (Integer) space.get(2);
-                    System.out.println("\nEnter new Space Number: ");
-                    Integer newNumber = scanner.nextInt();
-                    scanner.nextLine();
+                    Integer newNumber;
+                    while (true) {
+                        try {
+                            System.out.println("Enter new Space Number: ");
+                            newNumber = Integer.parseInt(scanner.nextLine());
+                            break;
+                        } catch (Exception e) {
+                            System.out.println("Please enter space number in numerical");
+                        }
+                    }
 
                     if (doesSpaceExist(name,id,newNumber)){
                         System.out.println("Space already exists. Please try again.");
@@ -655,7 +684,7 @@ public class ParkingLot {
                     String name =(String) space.get(0);
                     String id = (String) space.get(1);
                     Integer number = (Integer) space.get(2);
-                    System.out.println("\nEnter new Space Type: ");
+                    System.out.println("\nEnter new Space Type (Electric/ Handicap/ Compact Car/ Regular):");
                     String newType = scanner.nextLine();
                     Main.statement.executeUpdate("UPDATE Space SET SpaceType = \'" + newType + "\' WHERE ZoneID = \'" + id +"\' AND LotName = \'"+name+"\' AND SpaceNumber = "+number);
                     System.out.println("Parking Lot Space updated successfully.");
@@ -679,15 +708,22 @@ public class ParkingLot {
             name = scanner.nextLine();
             System.out.println("\nEnter zone ID that needs to be updated: ");
             zone = scanner.nextLine();
-            System.out.println("\nEnter Space Number that needs to be updated: ");
-            number = Integer.parseInt(scanner.nextLine());
+            while (true) {
+                try {
+                    System.out.println("\nEnter Space Number that needs to be updated: ");
+                    number = Integer.parseInt(scanner.nextLine());
+                    break;
+                } catch (Exception e) {
+                    System.out.println("Please enter space number in numerical");
+                }
+            }
 
 
             if (!doesSpaceExist(name,zone,number)) {
                 System.out.println("Incorrect Space entered. Please select space from the below Spaces");
                 ResultSet names = Main.statement.executeQuery("SELECT * FROM Space;");
                 while (names.next()) {
-                    System.out.println("Lot name = "+names.getString("LotName").toString()+ " Zone ID = "+ names.getString("ZoneID").toString()+ " Space Number = "+ names.getInt("SpaceNumber"));
+                    System.out.println("Lot name = "+names.getString("LotName").toString()+ ", Zone ID = "+ names.getString("ZoneID").toString()+ ", Space Number = "+ names.getInt("SpaceNumber"));
                 }
                 System.out.println();
             }else{
