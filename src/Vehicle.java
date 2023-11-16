@@ -14,12 +14,12 @@ public class Vehicle {
     public static void vehicleOptions() throws SQLException {
         boolean exit = false;
         while (!exit) {
-            System.out.println("\n1. Insert vehicle Information");
+            System.out.println("\n1. Insert vehicle information");
             System.out.println("2. View all vehicle information");
             System.out.println("3. Update vehicle information");
             System.out.println("4. Delete vehicle information");
-            System.out.println("5. Assign Vehicle to permit");
-            System.out.println("6. Remove Vehicle from permit");
+            System.out.println("5. Assign vehicle to permit");
+            System.out.println("6. Remove vehicle from permit");
             System.out.println("7. Return to the home screen");
 
             int choice;
@@ -49,8 +49,6 @@ public class Vehicle {
         }
     }
 
-    //Inserting without permit ID throws error
-
     private static void insertVehicle() throws SQLException {
         System.out.println("\nEnter License Number of Vehicle: ");
         String licenseNo = scanner.nextLine();
@@ -66,7 +64,7 @@ public class Vehicle {
         if (doesLicenseNoExist(licenseNo)) {
             System.out.println("License Number already exists. Please try again.");
             System.out.println("Following is the existing vehicle information: \n");
-            Main.printTable("Vehicle");
+            viewVehicle();
         } else {
             Main.statement.executeUpdate("INSERT INTO Vehicle(LicenseNo,Model,Manf, Color, Year) VALUES (\'" + licenseNo + "\',\'" + model + "\', \'" + manf + "\',\'" + color + "\',\'" + year + "\')");
             System.out.println("Vehicle information entered successfully.");
@@ -81,35 +79,20 @@ public class Vehicle {
     private static void deleteVehicle() throws SQLException {
         System.out.println("\nEnter license number of vehicle to be deleted: ");
         String licenseNo = scanner.nextLine();
-
+        String deleteQuery = "DELETE FROM Vehicle WHERE LicenseNo = \'" + licenseNo + "\';";
         if (doesLicenseNoExist(licenseNo)) {
-            List<String> cNumbers = Citation.getCitationNumberFromLicense(licenseNo);
-            if (cNumbers != null) {
-                for (String value : cNumbers) {
-                    if (Citation.doesCitationNoExist(value)) {
-                        String paymentStatus = Citation.getColumnDetails("PaymentStatus", value);
-                        String appealStatus = Citation.getColumnDetails("AppealStatus", value);
-                        if (appealStatus.equalsIgnoreCase("APPROVED") || paymentStatus.equalsIgnoreCase("PAID")) {
-                            Main.statement.executeUpdate("DELETE FROM Encompasses WHERE CNumber = \'" + value + "\';");
-                            Main.statement.executeUpdate("DELETE FROM Citation WHERE CNumber = \'" + value + "\';");
-                            Main.statement.executeUpdate("DELETE FROM Vehicle WHERE LicenseNo = \'" + licenseNo + "\';");
-                            System.out.println("Vehicle row with license number " + licenseNo + " deleted successfully.");
-                        }else{
-                            System.out.println("Cannot remove the vehicle due to unpaid citations.");
-                        }
-                    } else {
-                        System.out.println("Invalid citation number entered. Please try again."); //remove
-                    }
-                }
+            if (Citation.checkIfCitationsExist(licenseNo)) {
+                Citation.deleteCitationIfApproved(licenseNo, deleteQuery);
+//                            System.out.println("Vehicle row with license number " + licenseNo + " deleted successfully.");
             } else {
-                Main.statement.executeUpdate("DELETE FROM Vehicle WHERE LicenseNo = \'" + licenseNo + "\';");
+                Main.statement.executeUpdate(deleteQuery);
                 System.out.println("Vehicle row with license number " + licenseNo + " deleted successfully.");
             }
         } else {
             System.out.println("Incorrect license number entered. Please select from the below license numbers:");
             ResultSet ids = Main.statement.executeQuery("SELECT LicenseNo FROM Vehicle;");
             while (ids.next()) {
-                System.out.println(ids.getBigDecimal("LicenseNo").toBigInteger());
+                System.out.println(ids.getString("LicenseNo"));
             }
             System.out.println();
         }
@@ -278,6 +261,7 @@ public class Vehicle {
         }
     }
 
+    //double check this
     public static void removeVehicleFromPermit() throws SQLException {
         boolean flag = false;
         String permitID, licenseNo;
@@ -294,40 +278,27 @@ public class Vehicle {
                 System.out.println("Incorrect license number entered. Please try again.");
         } while (!Vehicle.doesLicenseNoExist(licenseNo));
 
-        List<String> cNumbers = Citation.getCitationNumberFromLicense(licenseNo);
-        if (cNumbers != null) {// needs work
-            System.out.println("Cannot remove the vehicle due to following citations: ");
-            for (String value : cNumbers) {
-                System.out.println(value);
+        if (Permit.doesPermitIDExist(permitID)) {
+            if (doesLicenseNoExist(licenseNo)) {
+                PreparedStatement ps = Main.connection.prepareStatement("UPDATE Vehicle SET PermitID = ? WHERE LicenseNo = \'" + licenseNo + "\';");
+                ps.setNull(1, Types.VARCHAR);
+                ps.executeUpdate();
+                System.out.println("Vehicle " + licenseNo + " removed from permit " + permitID + " successfully.");
+            } else {
+                System.out.println("Incorrect license number entered. Please select from the below license numbers:");
+                printAllLicenseNumbers();
             }
         } else {
-            while (!flag) {
-                if (Permit.doesPermitIDExist(permitID)) {
-                    if (doesLicenseNoExist(licenseNo)) {
-                        flag = true;
-                        PreparedStatement ps = Main.connection.prepareStatement("UPDATE Vehicle SET PermitID = ? WHERE LicenseNo = \'" + licenseNo + "\';");
-                        ps.setNull(1, Types.VARCHAR);
-                        ps.executeUpdate();
-                        System.out.println("Vehicle " + licenseNo + " removed from permit " + permitID + " successfully.");
-                    } else {
-                        System.out.println("Incorrect license number entered. Please select from the below license numbers:");
-                        printAllLicenseNumbers();
-                    }
-                } else {
-                    System.out.println("Incorrect permit ID entered. Please select from the below permit IDs:");
-                    Permit.printAllPermitIds();
-                }
-            }
+            System.out.println("Incorrect permit ID entered. Please select from the below permit IDs:");
+            Permit.printAllPermitIds();
         }
     }
 
-    private static void printAllLicenseNumbers() throws SQLException {
+    public static void printAllLicenseNumbers() throws SQLException {
         ResultSet licenses = Main.statement.executeQuery("SELECT LicenseNo FROM Vehicle;");
         while (licenses.next()) {
             System.out.println(licenses.getString("LicenseNo"));
         }
         System.out.println();
     }
-
-
 }

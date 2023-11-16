@@ -2,6 +2,7 @@ import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Scanner;
 
 public class Driver {
@@ -59,18 +60,23 @@ public class Driver {
         System.out.println("Enter Driver Status: ");
         String driverStatus = scanner.nextLine();
 
-        if(doesDriverIDExist(driverId)){
+        if (doesDriverIDExist(driverId)) {
             System.out.println("Driver ID already exists. Please try again.");
             System.out.println("Following is the existing driver information: \n");
             Main.printTable("Driver");
-        }else{
-            Main.statement.executeUpdate("INSERT INTO Driver(DriverID,DriverName,Status) VALUES ("+ driverId+",\'"+driverName+"\', \'"+driverStatus+"\')");
+        } else {
+            if(driverStatus.equals("V")){
+                Main.statement.executeUpdate("INSERT INTO Visitor VALUES (" + driverId + ")");
+            }else{
+                Main.statement.executeUpdate("INSERT INTO UnivMember VALUES (" + driverId + ")");
+            }
+            Main.statement.executeUpdate("INSERT INTO Driver(DriverID,DriverName,Status) VALUES (" + driverId + ",\'" + driverName + "\', \'" + driverStatus + "\')");
             System.out.println("Driver information entered successfully.");
         }
     }
 
     public static void viewDriver() throws SQLException {
-        String query = "Select * from Driver";
+        String query = "SELECT * FROM Driver";
         PreparedStatement myStmt = Main.connection.prepareStatement(query);
         ResultSet rs = myStmt.executeQuery();
         DBTablePrinter.printResultSet(rs);
@@ -78,45 +84,24 @@ public class Driver {
 
     private static void deleteDriver() throws SQLException {
         boolean exit = false;
-        while (!exit) {
-            System.out.println("\n1. Delete driver information by driver ID");
-            System.out.println("2. Delete driver information by driver name");
-            System.out.println("3. Return to the driver screen");
-
-            int choice;
-            while (true) {
-                try {
-                    System.out.print("Enter your choice: ");
-                    choice = Integer.parseInt(scanner.nextLine());
-                    break;
-                } catch (Exception e) {
-                    System.out.println("\nPlease enter a valid choice (numerical)");
-                }
-            }
-
-            switch (choice) {
-                case 1 -> deleteDriverById();
-                case 2 -> deleteDriverByName();
-                case 3 -> {
-                    System.out.println("Back to driver menu");
-                    exit = true;
-                }
-                default -> System.out.println("\nInvalid choice. Please try again.");
-            }
-        }
-    }
-
-    /**
-     * add name condition
-     *
-     * @throws SQLException
-     */
-    private static void deleteDriverById() throws SQLException {
         System.out.println("\nEnter Driver Id To Be Deleted: ");
         BigInteger driverId = scanner.nextBigInteger();
         scanner.nextLine();
 
-        if(doesDriverIDExist(driverId)) {
+//        Delete From Driver Where DriverID IN (Select * from Driver natural left join Permit natural left join Citation Natural left join Possesses WHERE DriverID = 9194789124);
+
+        if (doesDriverIDExist(driverId)) {
+            Main.statement.executeUpdate("DELETE FROM Possesses WHERE PermitID IN (SELECT PermitID FROM Permit WHERE DriverID = " + driverId + ");");
+            Main.statement.executeUpdate("DELETE FROM Comprises WHERE PermitID IN (SELECT PermitID FROM Permit WHERE DriverID = " + driverId + ");");
+            PreparedStatement ps = Main.connection.prepareStatement("UPDATE Vehicle set PermitID = ? WHERE PermitID IN (SELECT PermitID FROM Permit WHERE DriverID = " + driverId + ");");
+            ps.setNull(1, Types.VARCHAR);
+            ps.executeUpdate();
+            Main.statement.executeUpdate("DELETE FROM Permit WHERE DriverID = '" + driverId + "';");
+            PreparedStatement ps1 = Main.connection.prepareStatement("UPDATE Citation SET DriverID = ? WHERE DriverID = " + driverId + ";");
+            ps1.setNull(1, Types.BIGINT);
+            ps1.executeUpdate();
+            Main.statement.executeUpdate("DELETE FROM UnivMember WHERE DriverID = '" + driverId + "';");
+            Main.statement.executeUpdate("DELETE FROM Visitor WHERE DriverID = '" + driverId + "';");
             Main.statement.executeUpdate("DELETE FROM Driver WHERE DriverID = '" + driverId + "';");
             System.out.println("Driver row with ID " + driverId + " deleted successfully.");
         } else {
@@ -124,29 +109,6 @@ public class Driver {
             ResultSet ids = Main.statement.executeQuery("SELECT DriverID FROM Driver;");
             while (ids.next()) {
                 System.out.println(ids.getBigDecimal("DriverID").toBigInteger());
-            }
-            System.out.println();
-        }
-    }
-
-    private static void deleteDriverByName() throws SQLException {
-        System.out.println("Enter Driver Name To Be Deleted: ");
-        String driverName = scanner.nextLine();
-
-        boolean driverExists = false;
-        ResultSet rs = Main.statement.executeQuery("SELECT * FROM Driver WHERE DriverName = \'" + driverName + "\'");
-        if (rs.next()) {
-            driverExists = true;
-        }
-
-        if (driverExists) {
-            Main.statement.executeUpdate("DELETE FROM Driver WHERE DriverName = \'" + driverName + "\';");
-            System.out.println("Driver row with Name " + driverName + " deleted successfully.");
-        } else {
-            System.out.println("Incorrect driver Name entered. Please select from the below drivers");
-            ResultSet name = Main.statement.executeQuery("SELECT DriverName FROM Driver;");
-            while (name.next()) {
-                System.out.println(name.getString("DriverName"));
             }
             System.out.println();
         }
@@ -178,9 +140,9 @@ public class Driver {
                     BigInteger newDriverId = scanner.nextBigInteger();
                     scanner.nextLine();
 
-                    if (doesDriverIDExist(newDriverId)){
+                    if (doesDriverIDExist(newDriverId)) {
                         System.out.println("Driver ID already exists. Please try again.");
-                    }else {
+                    } else {
                         Main.statement.executeUpdate("UPDATE Driver SET DriverID = " + newDriverId + " WHERE DriverID = " + driverId + ";");
                         System.out.println("Driver ID updated successfully.");
                     }
@@ -223,7 +185,7 @@ public class Driver {
                     System.out.println(ids.getBigDecimal("DriverID").toBigInteger());
                 }
                 System.out.println();
-            }else{
+            } else {
                 flag = true;
             }
         }
