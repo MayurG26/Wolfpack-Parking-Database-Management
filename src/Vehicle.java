@@ -84,7 +84,7 @@ public class Vehicle {
 
         if (doesLicenseNoExist(licenseNo)) {
             List<String> cNumbers = Citation.getCitationNumberFromLicense(licenseNo);
-            if (cNumbers != null) {
+            if (!cNumbers.isEmpty()) {
                 for (String value : cNumbers) {
                     if (Citation.doesCitationNoExist(value)) {
                         String paymentStatus = Citation.getColumnDetails("PaymentStatus", value);
@@ -321,7 +321,7 @@ public class Vehicle {
         }
     }
 
-    private static void printAllLicenseNumbers() throws SQLException {
+    public static void printAllLicenseNumbers() throws SQLException {
         ResultSet licenses = Main.statement.executeQuery("SELECT LicenseNo FROM Vehicle;");
         while (licenses.next()) {
             System.out.println(licenses.getString("LicenseNo"));

@@ -146,6 +146,7 @@ public class Permit {
                     String insertPossesses = ("INSERT into Possesses (PermitID, DriverID) VALUES (\'" + permitId + "\'," + driverId + " )");
                     Main.statement.executeUpdate(insertPossesses);
                 }
+                // Check if below part is required
                 ResultSet sp = Main.statement.executeQuery("SELECT SpaceNumber FROM Space WHERE SpaceType = \'" + assignedSpaceType + "\' AND ZoneID =\'" + assignedZoneId + "\' AND LotName = \'" + assignedLot + "\' AND AvailStatus = \'Available\' order by SpaceNumber asc LIMIT 1;");
                 if (sp.next()) {
                     number = sp.getInt("SpaceNumber");
@@ -155,11 +156,6 @@ public class Permit {
                     String aStatus = "Occupied";
                     Main.statement.executeUpdate("UPDATE Space SET AvailStatus = \'" + aStatus + "\' WHERE ZoneID = \'" + assignedZoneId + "\' AND LotName = \'" + assignedLot + "\' AND SpaceNumber = " + number);
 
-                } else {
-                    String aStatus = "Occupied";
-                    String query = "INSERT INTO Space (LotName, ZoneID,SpaceType,AvailStatus) VALUES (\'"+ assignedLot + "\' ,  \'" + assignedZoneId + "\',\'"+assignedSpaceType+"\',\'"+aStatus+"\')";
-                    Main.statement.executeUpdate(query);
-                    System.out.println("Space number nahi bhetla");
                 }
             } else {
                 System.out.println("Driver ID does not exist. Please select valid Driver ID from below list");
