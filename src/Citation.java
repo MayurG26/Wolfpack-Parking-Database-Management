@@ -31,25 +31,27 @@ public class Citation {
                     System.out.println("\nPlease enter a valid choice (numerical)");
                 }
             }
-
-            switch (choice) {
-                case 1 -> insertCitation();
-                case 2 -> viewCitation();
-                case 3 -> updateCitation();
-                case 4 -> deleteCitation();
-                case 5 -> payCitation();
-                case 6 -> appealCitation();
-                case 7 -> checkParkingViolation();
-                case 8 -> {
-                    System.out.println("<-- Back to home menu");
-                    exit = true;
+            try {
+                switch (choice) {
+                    case 1 -> insertCitation();
+                    case 2 -> viewCitation();
+                    case 3 -> updateCitation();
+                    case 4 -> deleteCitation();
+                    case 5 -> payCitation();
+                    case 6 -> appealCitation();
+                    case 7 -> checkParkingViolation();
+                    case 8 -> {
+                        System.out.println("<-- Back to home menu");
+                        exit = true;
+                    }
+                    default -> System.out.println("\nInvalid choice. Please try again.");
                 }
-                default -> System.out.println("\nInvalid choice. Please try again.");
+            } catch (SQLException e) {
+                System.out.println("Something went wrong! Please try again. ");
             }
         }
     }
-
-    private static void checkParkingViolation() throws SQLException { //check when one licenno and 2 permits
+    private static void checkParkingViolation() throws SQLException {
         List<String> expectedLocationDetails = new ArrayList<>();
         List<String> actualLocationDetails = new ArrayList<>();
         boolean isViolation = false;
@@ -87,7 +89,7 @@ public class Citation {
                     Double fee = getCitationFee("No Permit", licenseNo);
                     generateCitationForViolation(licenseNo, actualLotName, fee, "No Permit");
                 } else {
-                    if (!expectedLocationDetails.equals(actualLocationDetails)) {
+                    if (expectedLocationDetails.retainAll(actualLocationDetails)) {
                         isViolation = true;
                         System.out.println("Parking violation detected for car --> " + licenseNo);
                         Double fee = getCitationFee("Invalid Permit", licenseNo);
@@ -96,8 +98,8 @@ public class Citation {
 
                     rs = Main.statement.executeQuery("SELECT CASE WHEN EXISTS (SELECT 1 FROM Permit NATURAL RIGHT JOIN Vehicle WHERE Permit.ExpDate < CURRENT_DATE AND LicenseNo = \'" + licenseNo + "\') THEN 'TRUE' ELSE 'FALSE' END AS VIOLATION ;");
                     if (rs.next()) {
-                        boolean violation = rs.getBoolean("VIOLATION");
-                        if (violation) {
+                        String violation = rs.getString(1);
+                        if (violation.equalsIgnoreCase("TRUE")) {
                             isViolation = true;
                             System.out.println("Permit is EXPIRED for car: " + licenseNo);
                             Double fee = getCitationFee("Expired Permit", licenseNo);
@@ -107,8 +109,8 @@ public class Citation {
                     } else {
                         rs = Main.statement.executeQuery("SELECT CASE WHEN EXISTS (SELECT 1 FROM Permit NATURAL RIGHT JOIN Vehicle WHERE Permit.StartDate > CURRENT_DATE AND LicenseNo = \'" + licenseNo + "\') THEN 'TRUE' ELSE 'FALSE' END AS VIOLATION ;");
                         if (rs.next()) {
-                            boolean violation = rs.getBoolean("VIOLATION");
-                            if (violation) {
+                            String violation = rs.getString(1);
+                            if (violation.equalsIgnoreCase("TRUE")) {
                                 isViolation = true;
                                 System.out.println("Permit is not yet valid for car: " + licenseNo);
                                 Double fee = getCitationFee("No Permit", licenseNo);
@@ -409,8 +411,8 @@ public class Citation {
         String cNumber = scanner.nextLine();
 
         if (doesCitationNoExist(cNumber)) {
-            String paymentStatus = getColumnDetails("PaymentStatus", cNumber);
-            String appealStatus = getColumnDetails("AppealStatus", cNumber);
+            String paymentStatus = getColumnDetails("PaymentStatus", cNumber) == null ? "" : getColumnDetails("PaymentStatus", cNumber);
+            String appealStatus = getColumnDetails("AppealStatus", cNumber) == null ? "" : getColumnDetails("AppealStatus", cNumber);
             if (appealStatus.equalsIgnoreCase("APPROVED") || paymentStatus.equalsIgnoreCase("PAID")) {
                 Main.statement.executeUpdate("DELETE FROM Encompasses WHERE CNumber = \'" + cNumber + "\';");
                 Main.statement.executeUpdate("DELETE FROM Citation WHERE CNumber = \'" + cNumber + "\';");

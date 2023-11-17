@@ -32,19 +32,22 @@ public class Vehicle {
                     System.out.println("\nPlease enter a valid choice (numerical)");
                 }
             }
-
-            switch (choice) {
-                case 1 -> insertVehicle();
-                case 2 -> viewVehicle();
-                case 3 -> updateVehicle();
-                case 4 -> deleteVehicle();
-                case 5 -> assignVehicleToPermit();
-                case 6 -> removeVehicleFromPermit();
-                case 7 -> {
-                    System.out.println("<-- Back to home menu");
-                    exit = true;
+            try {
+                switch (choice) {
+                    case 1 -> insertVehicle();
+                    case 2 -> viewVehicle();
+                    case 3 -> updateVehicle();
+                    case 4 -> deleteVehicle();
+                    case 5 -> assignVehicleToPermit();
+                    case 6 -> removeVehicleFromPermit();
+                    case 7 -> {
+                        System.out.println("<-- Back to home menu");
+                        exit = true;
+                    }
+                    default -> System.out.println("\nInvalid choice. Please try again.");
                 }
-                default -> System.out.println("\nInvalid choice. Please try again.");
+            } catch (SQLException e) {
+                System.out.println("Something went wrong! Please try again. ");
             }
         }
     }
@@ -79,41 +82,37 @@ public class Vehicle {
     }
 
     private static void deleteVehicle() throws SQLException {
-        System.out.println("\nEnter license number of vehicle to be deleted: ");
-        String licenseNo = scanner.nextLine();
+        try {
+            Main.connection.setAutoCommit(false);
+            System.out.println("\nEnter license number of vehicle to be deleted: ");
+            String licenseNo = scanner.nextLine();
 
-        if (doesLicenseNoExist(licenseNo)) {
+            String vehicleDeleteQuery = "DELETE FROM Vehicle WHERE EXISTS (Select 1 from Citation WHERE LicenseNo = \'" + licenseNo + "\' AND PaymentStatus = 'PAID' OR AppealStatus = 'APPROVED');";
             List<String> cNumbers = Citation.getCitationNumberFromLicense(licenseNo);
             if (!cNumbers.isEmpty()) {
                 for (String value : cNumbers) {
-                    if (Citation.doesCitationNoExist(value)) {
-                        String paymentStatus = Citation.getColumnDetails("PaymentStatus", value);
-                        String appealStatus = Citation.getColumnDetails("AppealStatus", value);
-                        if (appealStatus.equalsIgnoreCase("APPROVED") || paymentStatus.equalsIgnoreCase("PAID")) {
-                            Main.statement.executeUpdate("DELETE FROM Encompasses WHERE CNumber = \'" + value + "\';");
-                            Main.statement.executeUpdate("DELETE FROM Citation WHERE CNumber = \'" + value + "\';");
-                            Main.statement.executeUpdate("DELETE FROM Vehicle WHERE LicenseNo = \'" + licenseNo + "\';");
-                            System.out.println("Vehicle row with license number " + licenseNo + " deleted successfully.");
-                        }else{
-                            System.out.println("Cannot remove the vehicle due to unpaid citations.");
-                        }
-                    } else {
-                        System.out.println("Invalid citation number entered. Please try again."); //remove
+                    System.out.println(value);
+                    Main.statement.executeUpdate("DELETE FROM Encompasses WHERE CNumber = \'" + value + "\';");
+                    PreparedStatement ps = Main.connection.prepareStatement("UPDATE Citation SET LicenseNo = ? WHERE CNumber = \'" + value + "\' AND (PaymentStatus = 'PAID' OR AppealStatus = 'APPROVED');");
+                    ps.setNull(1,Types.VARCHAR);
+                    ps.executeUpdate();
+                    if (!Main.statement.execute(vehicleDeleteQuery)) {
+                        System.out.println("Cannot remove the vehicle due to unpaid citations.");
+                        Main.connection.rollback();
+                        return;
                     }
+                    Main.statement.executeUpdate("DELETE FROM Citation WHERE CNumber = \'" + value + "\' AND (PaymentStatus = 'PAID' OR AppealStatus = 'APPROVED');");
                 }
+                System.out.println("Vehicle row with license number " + licenseNo + " deleted successfully.");
             } else {
                 Main.statement.executeUpdate("DELETE FROM Vehicle WHERE LicenseNo = \'" + licenseNo + "\';");
-                System.out.println("Vehicle row with license number " + licenseNo + " deleted successfully.");
             }
-        } else {
-            System.out.println("Incorrect license number entered. Please select from the below license numbers:");
-            ResultSet ids = Main.statement.executeQuery("SELECT LicenseNo FROM Vehicle;");
-            while (ids.next()) {
-                System.out.println(ids.getBigDecimal("LicenseNo").toBigInteger());
-            }
-            System.out.println();
+            Main.connection.commit();
+        } finally {
+            Main.connection.setAutoCommit(true);
         }
     }
+
 
     private static void updateVehicle() throws SQLException {
         boolean exit = false;
@@ -239,39 +238,38 @@ public class Vehicle {
         String insertQuery = "UPDATE Vehicle SET PermitID = \'" + permitID + "\' WHERE LicenseNo = \'" + licenseNo + "\';";
         String status = null;
         BigInteger driverID = BigInteger.valueOf(0);
+        if (!doesLicenseNoExist(licenseNo)) {
+            throw new SQLException("Vehicle with the given License number does not exist");
+        }
         if (Permit.doesPermitIDExist(permitID)) {
-            if (doesLicenseNoExist(licenseNo)) {
-                ResultSet id = Main.statement.executeQuery("SELECT DriverID FROM Permit WHERE PermitID = \'" + permitID + "\';");
-                if (id.next()) {
-                    driverID = id.getBigDecimal("DriverID").toBigInteger();
-                } else {
-                    System.out.println("Driver ID not found for the given permit. Please try again.");
-                }
-                ResultSet rs = Main.statement.executeQuery("SELECT Status FROM Driver WHERE DriverID = " + driverID + ";");
-                if (rs.next()) {
-                    status = rs.getString("Status");
-                    String countQuery = "Select Count(PermitID) AS CountP from Vehicle WHERE PermitID = \'" + permitID+"\';";
-                    ResultSet cns = Main.statement.executeQuery(countQuery);
-                    if (cns.next()) {
-                        cs = cns.getInt("CountP");
-                        System.out.println(cs);
-                    }
-                }
-                HashMap<String, Integer> hashMap = new HashMap<String, Integer>();
-                hashMap.put("E", 2);
-                hashMap.put("S", 1);
-                hashMap.put("V", 1);
-                int expectedCount = hashMap.get(status);
-                if (cs < expectedCount) {
-                    Main.statement.executeUpdate(insertQuery);
-                    System.out.println("Vehicle " + licenseNo + " assigned to permit " + permitID + " successfully.");
-                } else {
-                    System.out.println(Permit.CANNOT_ASSIGN_PERMIT_MESSAGE);
-                }
+            ResultSet id = Main.statement.executeQuery("SELECT DriverID FROM Permit WHERE PermitID = \'" + permitID + "\';");
+            if (id.next()) {
+                driverID = id.getBigDecimal("DriverID").toBigInteger();
             } else {
-                System.out.println("Incorrect license number entered. Please select from the below license numbers:");
-                printAllLicenseNumbers();
+                System.out.println("Driver ID not found for the given permit. Please try again.");
             }
+            ResultSet rs = Main.statement.executeQuery("SELECT Status FROM Driver WHERE DriverID = " + driverID + ";");
+            if (rs.next()) {
+                status = rs.getString("Status");
+                String countQuery = "Select Count(PermitID) AS CountP from Vehicle WHERE PermitID = \'" + permitID + "\';";
+                ResultSet cns = Main.statement.executeQuery(countQuery);
+                if (cns.next()) {
+                    cs = cns.getInt("CountP");
+                    System.out.println(cs);
+                }
+            }
+            HashMap<String, Integer> hashMap = new HashMap<String, Integer>();
+            hashMap.put("E", 2);
+            hashMap.put("S", 1);
+            hashMap.put("V", 1);
+            int expectedCount = hashMap.get(status);
+            if (cs < expectedCount) {
+                Main.statement.executeUpdate(insertQuery);
+                System.out.println("Vehicle " + licenseNo + " assigned to permit " + permitID + " successfully.");
+            } else {
+                System.out.println(Permit.CANNOT_ASSIGN_PERMIT_MESSAGE);
+            }
+
         } else {
             System.out.println("Incorrect permit ID entered. Please select from the below permit IDs:");
             Permit.printAllPermitIds();
@@ -295,7 +293,7 @@ public class Vehicle {
         } while (!Vehicle.doesLicenseNoExist(licenseNo));
 
         List<String> cNumbers = Citation.getCitationNumberFromLicense(licenseNo);
-        if (cNumbers != null) {// needs work
+        if (!cNumbers.isEmpty()) {// needs work
             System.out.println("Cannot remove the vehicle due to following citations: ");
             for (String value : cNumbers) {
                 System.out.println(value);
