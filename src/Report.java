@@ -30,24 +30,28 @@ public class Report {
                     System.out.println("Please enter a valid choice (numerical)");
                 }
             }
+            try {
 
-            switch (choice) {
-                case 1 -> CitationReport();
-                case 2 -> LotCitationReport();
-                case 3 -> ListZones();
-                case 4 -> NumCarViolation();
-                case 5 -> NumEmployee();
-                case 6 -> PermitInfo();
-                case 7 -> AvailSpaceNumber();
-                case 8 ->{
-                    System.out.println("Back to home menu");
-                    exit = true;
+
+                switch (choice) {
+                    case 1 -> CitationReport();
+                    case 2 -> LotCitationReport();
+                    case 3 -> ListZones();
+                    case 4 -> NumCarViolation();
+                    case 5 -> NumEmployee();
+                    case 6 -> PermitInfo();
+                    case 7 -> AvailSpaceNumber();
+                    case 8 -> {
+                        System.out.println("Back to home menu");
+                        exit = true;
+                    }
+                    default -> System.out.println("Invalid choice. Please try again.");
                 }
-                default -> System.out.println("Invalid choice. Please try again.");
+            } catch (SQLException e) {
+                System.out.println("Something went wrong! Please try again. ");
             }
         }
     }
-
     private static void CitationReport() throws SQLException {
         System.out.println("Citation Report:");
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Citation " +
@@ -60,8 +64,8 @@ public class Report {
         System.out.println("Enter the type of time range you want to see the report for: ");
         boolean exit = false;
         while (!exit) {
-            System.out.println("1. Annually");
-            System.out.println("2. Monthly");
+            System.out.println("1. Monthly");
+            System.out.println("2. Annually");
             System.out.println("3. Custom Input for Dates");
             System.out.println("4. Back to Reports menu ");
             int choice;
@@ -120,7 +124,7 @@ public class Report {
     }
     private static void NumCarViolation() throws SQLException {
         System.out.println("Number of cars in violation:");
-        ResultSet rs = Main.statement.executeQuery("SELECT Count(*) AS \'Number of Cars in Violation\' FROM (SELECT DISTINCT LicenseNo FROM Citation) AS subquery");
+        ResultSet rs = Main.statement.executeQuery("SELECT Count(*) AS \'Number of Cars in Violation\' FROM (SELECT DISTINCT LicenseNo FROM Citation WHERE PaymentStatus <> 'PAID' AND AppealStatus <> 'APPROVED' ) AS subquery");
         DBTablePrinter.printResultSet(rs);
 
     }

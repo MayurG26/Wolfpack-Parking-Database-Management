@@ -1,4 +1,5 @@
-use pnavale;
+use
+pnavale;
 
 DROP TABLE IF EXISTS Encompasses;
 DROP TABLE IF EXISTS Citation;
@@ -15,15 +16,15 @@ DROP TABLE IF EXISTS Driver;
 
 CREATE TABLE ParkingLot
 (
-    LotName  VARCHAR(50) PRIMARY KEY,
-    Address  VARCHAR(50) NOT NULL,
+    LotName  VARCHAR(50) PRIMARY KEY,
+    Address  VARCHAR(50) NOT NULL,
     NumSpace INT,
-    NumZone  INT
+    NumZone  INT
 );
 
 CREATE TABLE Zone
 (
-    ZoneID  VARCHAR(2),
+    ZoneID  VARCHAR(2),
     LotName VARCHAR(50),
     PRIMARY KEY (ZoneID, LotName),
     FOREIGN KEY (LotName) REFERENCES ParkingLot (LotName) ON UPDATE CASCADE
@@ -32,19 +33,19 @@ CREATE TABLE Zone
 CREATE TABLE Space
 (
     SpaceNumber INT,
-    SpaceType   VARCHAR(20) DEFAULT 'Regular',
+    SpaceType   VARCHAR(20) DEFAULT 'Regular',
     AvailStatus VARCHAR(20) NOT NULL,
-    ZoneID      VARCHAR(2),
-    LotName     VARCHAR(50),
+    ZoneID      VARCHAR(2),
+    LotName     VARCHAR(50),
     PRIMARY KEY (ZoneID, LotName, SpaceNumber),
     FOREIGN KEY (ZoneID, LotName) REFERENCES Zone (ZoneID, LotName) ON UPDATE CASCADE
 );
 
 CREATE TABLE Driver
 (
-    DriverID   BIGINT PRIMARY KEY,
+    DriverID   BIGINT PRIMARY KEY,
     DriverName VARCHAR(50) NOT NULL,
-    Status     VARCHAR(50) NOT NULL
+    Status     VARCHAR(50) NOT NULL
 );
 
 CREATE TABLE UnivMember
@@ -61,15 +62,15 @@ CREATE TABLE Visitor
 
 CREATE TABLE Permit
 (
-    PermitID          VARCHAR(20) PRIMARY KEY,
-    PermitType        VARCHAR(50) NOT NULL,
-    StartDate         DATE        NOT NULL,
-    ExpDate           DATE        NOT NULL,
-    ExpTime           TIME        NOT NULL,
+    PermitID          VARCHAR(20) PRIMARY KEY,
+    PermitType        VARCHAR(50) NOT NULL,
+    StartDate         DATE        NOT NULL,
+    ExpDate           DATE        NOT NULL,
+    ExpTime           TIME        NOT NULL,
     AssignedSpaceType VARCHAR(50) NOT NULL,
-    AssignedZoneID    VARCHAR(50) NOT NULL,
-    AssignedLot       VARCHAR(50) NOT NULL,
-    DriverID          BIGINT      NOT NULL,
+    AssignedZoneID    VARCHAR(50) NOT NULL,
+    AssignedLot       VARCHAR(50) NOT NULL,
+    DriverID          BIGINT      NOT NULL,
     FOREIGN KEY (DriverID) REFERENCES Driver (DriverID) ON UPDATE CASCADE
 );
 
@@ -84,10 +85,10 @@ CREATE TABLE Possesses
 
 CREATE TABLE Comprises
 (
-    PermitID    VARCHAR(20),
+    PermitID    VARCHAR(20),
     SpaceNumber INT,
-    ZoneID      VARCHAR(2),
-    LotName     VARCHAR(50),
+    ZoneID      VARCHAR(2),
+    LotName     VARCHAR(50),
     PRIMARY KEY (PermitID, SpaceNumber, ZoneID, LotName),
     FOREIGN KEY (PermitID) REFERENCES Permit (PermitID) ON UPDATE CASCADE,
     FOREIGN KEY (ZoneID, LotName, SpaceNumber) REFERENCES Space (ZoneID, LotName, SpaceNumber) ON UPDATE CASCADE
@@ -96,25 +97,25 @@ CREATE TABLE Comprises
 CREATE TABLE Vehicle
 (
     LicenseNo VARCHAR(10) PRIMARY KEY,
-    Model     VARCHAR(100) NOT NULL,
-    Manf      VARCHAR(50),
-    Color     VARCHAR(50)  NOT NULL,
-    Year      INT          NOT NULL,
-    PermitID  VARCHAR(20),
+    Model     VARCHAR(100) NOT NULL,
+    Manf      VARCHAR(50),
+    Color     VARCHAR(50)  NOT NULL,
+    Year      INT          NOT NULL,
+    PermitID  VARCHAR(20),
     FOREIGN KEY (PermitID) REFERENCES Permit (PermitID) ON UPDATE CASCADE
 );
 
 CREATE TABLE Citation
 (
-    CNumber       VARCHAR(20) PRIMARY KEY,
-    Date          DATE           NOT NULL,
-    Fee           DECIMAL(10, 2) NOT NULL,
-    Category      VARCHAR(20)    NOT NULL,
-    PaymentStatus VARCHAR(50)    NOT NULL,
-    Time          TIME           NOT NULL,
-    AppealStatus  VARCHAR(50),
-    LicenseNo     VARCHAR(10)    NOT NULL,
-    DriverID      BIGINT,
+    CNumber       VARCHAR(20) PRIMARY KEY,
+    Date          DATE           NOT NULL,
+    Fee           DECIMAL(10, 2) NOT NULL,
+    Category      VARCHAR(20)    NOT NULL,
+    PaymentStatus VARCHAR(50)    NOT NULL,
+    Time          TIME           NOT NULL,
+    AppealStatus  VARCHAR(50),
+    LicenseNo     VARCHAR(10)    NOT NULL,
+    DriverID      BIGINT,
     FOREIGN KEY (LicenseNo) REFERENCES Vehicle (LicenseNo) ON UPDATE CASCADE,
     FOREIGN KEY (DriverID) REFERENCES Driver (DriverID) ON UPDATE CASCADE
 );
@@ -178,7 +179,7 @@ VALUES ('Clay1', 'Model S', 'Tesla', 'Ultra Red', 2023, 'EJC1R'),
 
 -- Insert data into Citation table
 INSERT INTO Citation (CNumber, Date, Fee, Category, PaymentStatus, Time, AppealStatus, LicenseNo, DriverID)
-VALUES ('EP1', '2023-10-01', 30.00, 'Expired Permit', 'DUE', '08:00:00', NULL, 'CRICKET', 266399121),
+VALUES ('EP1', '2023-10-01', 30.00, 'Expired Permit', 'DUE', '08:00:00', NULL, 'CRICKET', 122765234),
        ('NP1', '2021-10-11', 40.00, 'No Permit', 'PAID', '08:00:00', NULL, 'VAN-9910', NULL);
 
 -- Insert data into ParkingLot table
