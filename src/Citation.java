@@ -1,11 +1,10 @@
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigInteger;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 public class Citation {
     static Scanner scanner = new Scanner(System.in);
@@ -19,7 +18,185 @@ public class Citation {
             System.out.println("4. Delete citation information");
             System.out.println("5. Pay citation");
             System.out.println("6. Appeal citation");
-            System.out.println("7. Return to the home screen");
+            System.out.println("7. Check parking violation");
+            System.out.println("8. Return to the home screen");
+
+            int choice;
+            while (true) {
+                try {
+                    System.out.print("Enter your choice: ");
+                    choice = Integer.parseInt(scanner.nextLine());
+                    break;
+                } catch (Exception e) {
+                    System.out.println("\nPlease enter a valid choice (numerical)");
+                }
+            }
+            try {
+                switch (choice) {
+                    case 1 -> insertCitation();
+                    case 2 -> viewCitation();
+                    case 3 -> updateCitation();
+                    case 4 -> deleteCitation();
+                    case 5 -> payCitation();
+                    case 6 -> appealCitation();
+                    case 7 -> checkParkingViolation();
+                    case 8 -> {
+                        System.out.println("<-- Back to home menu");
+                        exit = true;
+                    }
+                    default -> System.out.println("\nInvalid choice. Please try again.");
+                }
+            } catch (SQLException e) {
+                System.out.println("Something went wrong! Please try again. ");
+            }
+        }
+    }
+    private static void checkParkingViolation() throws SQLException {
+        List<String> expectedLocationDetails = new ArrayList<>();
+        List<String> actualLocationDetails = new ArrayList<>();
+        boolean isViolation = false;
+        ResultSet rs;
+        String permitID = null;
+        System.out.println("Following are the existing license number: ");
+        Vehicle.printAllLicenseNumbers();
+        System.out.println("Enter the license number for which you want to check parking violation: ");
+        String licenseNo = scanner.nextLine();
+        if (!Vehicle.doesLicenseNoExist(licenseNo)) {
+            System.out.println("Incorrect license number entered. Please try again.");
+        } else {
+            ResultSet resultSet = Main.statement.executeQuery("SELECT PermitID, AssignedSpaceType, AssignedZoneID, AssignedLot FROM Space NATURAL Right JOIN Comprises NATURAL JOIN Permit NATURAL RIGHT JOIN Vehicle WHERE Vehicle.LicenseNo = \'" + licenseNo + "\';");
+            while (resultSet.next()) {
+                permitID = resultSet.getString("PermitID");
+                expectedLocationDetails.add(resultSet.getString("AssignedSpaceType"));
+                expectedLocationDetails.add(resultSet.getString("AssignedZoneID"));
+                expectedLocationDetails.add(resultSet.getString("AssignedLot"));
+            }
+
+            System.out.println("Enter current car parked parking lot name: ");
+            String actualLotName = scanner.nextLine();
+            System.out.println("Enter current car parked zone ID: ");
+            String actualZoneID = scanner.nextLine();
+            System.out.println("Enter current car parked space type: ");
+            String actualSpaceType = scanner.nextLine();
+
+            if (ParkingLot.doesZoneExist(actualLotName, actualZoneID)) {
+                actualLocationDetails.add(actualSpaceType);
+                actualLocationDetails.add(actualZoneID);
+                actualLocationDetails.add(actualLotName);
+                if (permitID == null) {
+                    isViolation = true;
+                    System.out.println("Car has no permit in lot: " + actualLotName);
+                    Double fee = getCitationFee("No Permit", licenseNo);
+                    generateCitationForViolation(licenseNo, actualLotName, fee, "No Permit");
+                } else {
+                    if (expectedLocationDetails.retainAll(actualLocationDetails)) {
+                        isViolation = true;
+                        System.out.println("Parking violation detected for car --> " + licenseNo);
+                        Double fee = getCitationFee("Invalid Permit", licenseNo);
+                        generateCitationForViolation(licenseNo, actualLotName, fee, "Invalid Permit");
+                    }
+
+                    rs = Main.statement.executeQuery("SELECT CASE WHEN EXISTS (SELECT 1 FROM Permit NATURAL RIGHT JOIN Vehicle WHERE Permit.ExpDate < CURRENT_DATE AND LicenseNo = \'" + licenseNo + "\') THEN 'TRUE' ELSE 'FALSE' END AS VIOLATION ;");
+                    if (rs.next()) {
+                        String violation = rs.getString(1);
+                        if (violation.equalsIgnoreCase("TRUE")) {
+                            isViolation = true;
+                            System.out.println("Permit is EXPIRED for car: " + licenseNo);
+                            Double fee = getCitationFee("Expired Permit", licenseNo);
+                            generateCitationForViolation(licenseNo, actualLotName, fee, "Expired Permit");
+                        }
+
+                    } else {
+                        rs = Main.statement.executeQuery("SELECT CASE WHEN EXISTS (SELECT 1 FROM Permit NATURAL RIGHT JOIN Vehicle WHERE Permit.StartDate > CURRENT_DATE AND LicenseNo = \'" + licenseNo + "\') THEN 'TRUE' ELSE 'FALSE' END AS VIOLATION ;");
+                        if (rs.next()) {
+                            String violation = rs.getString(1);
+                            if (violation.equalsIgnoreCase("TRUE")) {
+                                isViolation = true;
+                                System.out.println("Permit is not yet valid for car: " + licenseNo);
+                                Double fee = getCitationFee("No Permit", licenseNo);
+                                generateCitationForViolation(licenseNo, actualLotName, fee, "No Permit");
+                            }
+                        }
+                    }
+                }
+                if (!isViolation) {
+                    System.out.println("There are no parking violations detected for the car --> " + licenseNo);
+                }
+            } else {
+                System.out.println("Incorrect information entered.Please try again.");
+            }
+        }
+    }
+
+    private static void generateCitationForViolation(String licenseNo, String actualLotName, Double fee, String category) throws SQLException {
+        System.out.println("Do you want to generate citation for this car? (Y/N)");
+        String choice = scanner.nextLine();
+        if (choice.equalsIgnoreCase("Y")) {
+            insertCitation(licenseNo, actualLotName, java.time.LocalDate.now().toString(), java.time.LocalTime.now().toString(), fee, category, "NOT PAID", "");
+        } else {
+            System.out.println("No citation created for the above parking violation.");
+        }
+    }
+
+    private static void appealCitation() throws SQLException {
+        String cNumber = null;
+        ResultSet result;
+        BigInteger driverId = null;
+        boolean exit = false, flag = true;
+        System.out.println("Enter Driver ID or License Number (Press enter to skip):");
+        String ans = scanner.nextLine();
+
+        if (!ans.isEmpty()) {
+            if (StringUtils.isNumeric(ans))
+                driverId = new BigInteger(ans);
+            ResultSet resultSet = Main.statement.executeQuery("SELECT * FROM Citation WHERE DriverID = \'" + ans + "\' OR LicenseNo = \'" + ans + "\';");
+            if (!resultSet.next()) {
+                if (!Driver.doesDriverIDExist(driverId) || !Vehicle.doesLicenseNoExist(ans)) {
+                    System.out.println("Incorrect driver ID or license number entered. Please try again.");
+                } else {
+                    System.out.println("There are no citations.");
+                }
+            } else {
+                do {
+                    System.out.println("\nFollowing are the citations for the mentioned ID");
+                    resultSet.beforeFirst();
+                    while (resultSet.next()) {
+                        System.out.println(resultSet.getString("CNumber"));
+                    }
+                    System.out.println("Please provide the citation number for which you wish to submit an appeal:");
+                    cNumber = scanner.nextLine();
+                    result = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE DriverID = \'" + ans + "\' OR licenseNo = \'" + ans + "\' AND Cnumber = \'" + cNumber + "\';");
+                    if (!result.next()) {
+                        System.out.println("Incorrect citation number entered. Please try again.");
+                        flag = false;
+                    }
+                } while (!flag);
+                appealOptions(cNumber, ans);
+            }
+        } else {
+            do {
+                ResultSet resultSet = Main.statement.executeQuery("SELECT * FROM Citation;");
+                System.out.println("\nFollowing are the citations:");
+                while (resultSet.next()) {
+                    System.out.println(resultSet.getString("CNumber"));
+                }
+                System.out.println("Please provide the citation number for which you wish to submit an appeal:");
+                cNumber = scanner.nextLine();
+                if (!doesCitationNoExist(cNumber))
+                    System.out.println("Incorrect citation number entered. Please try again.");
+            } while (!doesCitationNoExist(cNumber));
+            appealOptions(cNumber, ans);
+        }
+    }
+
+    private static void appealOptions(String cNumber, String ans) throws SQLException {
+        boolean exit = false;
+        String withParamsQuery = "UPDATE Citation SET AppealStatus = ? WHERE DriverID = \'" + ans + "\' OR LicenseNo = \'" + ans + "\' AND CNumber = \'" + cNumber + "\';";
+        String withoutParamsQuery = "UPDATE Citation SET AppealStatus = ? WHERE CNumber = \'" + cNumber + "\';";
+        String query = ans.isEmpty() ? withoutParamsQuery : withParamsQuery;
+        while (!exit) {
+            System.out.println("\n1. Raise Appeal");
+            System.out.println("2. Approve Appeal");
 
             int choice;
             while (true) {
@@ -33,14 +210,18 @@ public class Citation {
             }
 
             switch (choice) {
-                case 1 -> insertCitation();
-                case 2 -> viewCitation();
-                case 3 -> updateCitation();
-                case 4 -> deleteCitation();
-                case 5 -> payCitation();
-                case 6 -> appealCitation();
-                case 7 -> {
-                    System.out.println("<-- Back to home menu");
+                case 1 -> {
+                    PreparedStatement preparedStatement = Main.connection.prepareStatement(query);
+                    preparedStatement.setString(1, "RAISED");
+                    preparedStatement.executeUpdate();
+                    System.out.println("Appeal raised successfully for citation number " + cNumber);
+                    exit = true;
+                }
+                case 2 -> {
+                    PreparedStatement preparedStatement = Main.connection.prepareStatement(query);
+                    preparedStatement.setString(1, "APPROVED");
+                    preparedStatement.executeUpdate();
+                    System.out.println("Appeal approved successfully for citation number " + cNumber);
                     exit = true;
                 }
                 default -> System.out.println("\nInvalid choice. Please try again.");
@@ -48,98 +229,49 @@ public class Citation {
         }
     }
 
-    private static void appealCitation() throws SQLException {
-        String cNumber;
-        ResultSet result;
-        BigInteger driverId;
-        boolean exit = false, flag = false;
-        ResultSet ids = Main.statement.executeQuery("SELECT DriverID FROM Driver;");
-        while (ids.next()) {
-            System.out.println(ids.getBigDecimal("DriverID").toBigInteger());
-        }
-        System.out.println();
-        do {
-            System.out.println("Enter the Driver ID from above list: ");
-            driverId = scanner.nextBigInteger();
-            scanner.nextLine();
-        } while (!Driver.doesDriverIDExist(driverId));
-        ResultSet resultSet = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE DriverID = " + driverId + ";");
-        if (!resultSet.next()) {
-            System.out.println("There are no citations for the above driver.");
-        } else {
-            do {
-                System.out.println("\nFollowing are the citations for the mentioned driver ID");
-                resultSet.beforeFirst();
-                while (resultSet.next()) {
-                    System.out.println(resultSet.getString("CNumber"));
-                }
-                System.out.println("Please provide the citation number for which you wish to submit an appeal:");
-                cNumber = scanner.nextLine();
-                result = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE DriverID = " + driverId + " AND CNumber = \'" + cNumber + "\';");
-                if (result.next()) {
-                    flag = true;
-                }
-            } while (!flag);
-            while (!exit) {
-                System.out.println("\n1. Raise Appeal");
-                System.out.println("2. Approve Appeal");
-
-                int choice;
-                while (true) {
-                    try {
-                        System.out.print("Enter your choice: ");
-                        choice = Integer.parseInt(scanner.nextLine());
-                        break;
-                    } catch (Exception e) {
-                        System.out.println("\nPlease enter a valid choice (numerical)");
-                    }
-                }
-
-                switch (choice) {
-                    case 1 -> {
-                        Main.statement.executeUpdate("UPDATE Citation SET AppealStatus = \'RAISED\' WHERE CNumber = \'" + cNumber + "\';");
-                        System.out.println("Appeal raised successfully for citation number " + cNumber);
-                        exit = true;
-                    }
-                    case 2 -> {
-                        Main.statement.executeUpdate("UPDATE Citation SET AppealStatus = \'APPROVED\' WHERE CNumber = \'" + cNumber + "\';");
-                        System.out.println("Appeal approved successfully for citation number " + cNumber);
-                        exit = true;
-                    }
-                    default -> System.out.println("\nInvalid choice. Please try again.");
-                }
-            }
-        }
-    }
-
     private static void payCitation() throws SQLException {
         String cNumber;
         ResultSet result;
-        BigInteger driverId;
-        ResultSet ids = Main.statement.executeQuery("SELECT DriverID FROM Driver;");
-        while (ids.next()) {
-            System.out.println(ids.getBigDecimal("DriverID").toBigInteger());
-        }
-        System.out.println();
-        do {
-            System.out.println("Enter the Driver ID from above list: ");
-            driverId = new BigInteger(scanner.nextLine());
-        } while (!Driver.doesDriverIDExist(driverId));
+        BigInteger driverId = null;
+        System.out.println("Enter Driver ID or License Number (Press enter to skip):");
+        String ans = scanner.nextLine();
 
-        ResultSet citations = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE DriverID = " + driverId + " AND PaymentStatus <> \'PAID\';");
-        if (!citations.next()) {
-            System.out.println("There are no unpaid resultSet for the above driver.");
-        } else {
-            System.out.println("\nFollowing are the unpaid resultSet for the mentioned driver ID");
-            citations.beforeFirst();
-            while (citations.next()) {
-                System.out.println(citations.getString("CNumber"));
+        if (!ans.isEmpty()) {
+            if (StringUtils.isNumeric(ans))
+                driverId = new BigInteger(ans);
+            ResultSet citations = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE DriverID = \'" + ans + "\' OR LicenseNo = \'" + ans + "\' AND PaymentStatus <> \'PAID\';");
+            if (!citations.next()) {
+                if (!Driver.doesDriverIDExist(driverId) || !Vehicle.doesLicenseNoExist(ans)) {
+                    System.out.println("Incorrect driver ID or license number entered. Please try again.");
+                } else {
+                    System.out.println("There are no unpaid citations for the mentioned ID.");
+                }
+            } else {
+                System.out.println("\nFollowing are the unpaid citations for the mentioned ID");
+                citations.beforeFirst();
+                while (citations.next()) {
+                    System.out.println(citations.getString("CNumber"));
+                }
+                do {
+                    System.out.println("Provide the citation number associated with the payment:");
+                    cNumber = scanner.nextLine();
+                    result = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE WHERE DriverID = \'" + ans + "\' OR LicenseNo = \'" + ans + "\' AND PaymentStatus <> \'PAID\' AND CNumber = \'" + cNumber + "\';");
+                } while (!result.next());
+                Main.statement.executeUpdate("UPDATE Citation SET PaymentStatus = 'PAID' WHERE CNumber = \'" + cNumber + "\';");
+                System.out.println("Payment completed successfully for citation number " + cNumber);
             }
+        } else {
             do {
+                ResultSet resultSet = Main.statement.executeQuery("SELECT * FROM Citation;");
+                System.out.println("\nFollowing are the citations:");
+                while (resultSet.next()) {
+                    System.out.println(resultSet.getString("CNumber"));
+                }
                 System.out.println("Provide the citation number associated with the payment:");
                 cNumber = scanner.nextLine();
-                result = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE DriverID = " + driverId + " AND PaymentStatus <> \'PAID\' AND CNumber = \'" + cNumber + "\';");
-            } while (!result.next());
+                if (!doesCitationNoExist(cNumber))
+                    System.out.println("Incorrect citation number entered. Please try again.");
+            } while (!doesCitationNoExist(cNumber));
             Main.statement.executeUpdate("UPDATE Citation SET PaymentStatus = 'PAID' WHERE CNumber = \'" + cNumber + "\';");
             System.out.println("Payment completed successfully for citation number " + cNumber);
         }
@@ -150,7 +282,6 @@ public class Citation {
         Double fee = null;
         boolean exit = false;
         String category = null;
-        String cNumber = generateCitationNumber();
         System.out.println("Enter vehicle license number for citation: ");
         String licenseNo = scanner.nextLine();
 
@@ -214,23 +345,28 @@ public class Citation {
             System.out.println("Enter citation appeal status (Press enter to skip): ");
             String appealStatus = scanner.nextLine();
 
-            BigInteger driverId = getDriverIdFromLicenseNo(licenseNo);
-            PreparedStatement ps;
-            if (driverId == null) {
-                ps = Main.connection.prepareStatement("INSERT INTO Citation (CNumber, Date, Fee, Category, PaymentStatus, Time, AppealStatus, LicenseNo) VALUES (\'" + cNumber + "\', \'" + date + "\', " + fee + ", \'" + category + "\', \'" + paymentStatus + "\', \'" + time + "\', ?, \'" + licenseNo + "\');");
-            } else {
-                ps = Main.connection.prepareStatement("INSERT INTO Citation (CNumber, Date, Fee, Category, PaymentStatus, Time, AppealStatus, LicenseNo, DriverID) VALUES (\'" + cNumber + "\', \'" + date + "\', " + fee + ", \'" + category + "\', \'" + paymentStatus + "\', \'" + time + "\', ?, \'" + licenseNo + "\'," + driverId + ");");
-            }
-            if (appealStatus.isEmpty()) {
-                ps.setNull(1, Types.VARCHAR);
-            } else {
-                ps.setString(1, appealStatus);
-            }
-            ps.executeUpdate();
-            Main.statement.executeUpdate("INSERT INTO Encompasses (CNumber, LotName) VALUES (\'" + cNumber + "\', \'" + lotName + "\');");
-            System.out.println("Citation information entered successfully.");
-            System.out.println("Citation number: " + cNumber);
+            insertCitation(licenseNo, lotName, date, time, fee, category, paymentStatus, appealStatus);
         }
+    }
+
+    private static void insertCitation(String licenseNo, String lotName, String date, String time, Double fee, String category, String paymentStatus, String appealStatus) throws SQLException {
+        String cNumber = generateCitationNumber();
+        BigInteger driverId = getDriverIdFromLicenseNo(licenseNo);
+        PreparedStatement ps;
+        if (driverId == null) {
+            ps = Main.connection.prepareStatement("INSERT INTO Citation (CNumber, Date, Fee, Category, PaymentStatus, Time, AppealStatus, LicenseNo) VALUES (\'" + cNumber + "\', \'" + date + "\', " + fee + ", \'" + category + "\', \'" + paymentStatus + "\', \'" + time + "\', ?, \'" + licenseNo + "\');");
+        } else {
+            ps = Main.connection.prepareStatement("INSERT INTO Citation (CNumber, Date, Fee, Category, PaymentStatus, Time, AppealStatus, LicenseNo, DriverID) VALUES (\'" + cNumber + "\', \'" + date + "\', " + fee + ", \'" + category + "\', \'" + paymentStatus + "\', \'" + time + "\', ?, \'" + licenseNo + "\'," + driverId + ");");
+        }
+        if (appealStatus.isEmpty()) {
+            ps.setNull(1, Types.VARCHAR);
+        } else {
+            ps.setString(1, appealStatus);
+        }
+        ps.executeUpdate();
+        Main.statement.executeUpdate("INSERT INTO Encompasses (CNumber, LotName) VALUES (\'" + cNumber + "\', \'" + lotName + "\');");
+        System.out.println("Citation information entered successfully.");
+        System.out.println("Citation number: " + cNumber);
     }
 
     private static Double getCitationFee(String category, String licenseNo) throws SQLException {
@@ -242,7 +378,7 @@ public class Citation {
         Double discountedFee = fee;
         ResultSet rs = Main.statement.executeQuery("SELECT AssignedSpaceType FROM Permit NATURAL RIGHT JOIN Vehicle WHERE LicenseNo = \'" + licenseNo + "\';");
         while (rs.next()) {
-            String spaceType = rs.getString("AssignedSpaceType");
+            String spaceType = rs.getString("AssignedSpaceType") != null ? rs.getString("AssignedSpaceType") : "";
             if (spaceType.equalsIgnoreCase("Handicap")) {
                 discountedFee = 0.5 * fee;
                 System.out.println("Handicap user discount of 50% applied!!");
@@ -275,8 +411,8 @@ public class Citation {
         String cNumber = scanner.nextLine();
 
         if (doesCitationNoExist(cNumber)) {
-            String paymentStatus = getColumnDetails("PaymentStatus", cNumber);
-            String appealStatus = getColumnDetails("AppealStatus", cNumber);
+            String paymentStatus = getColumnDetails("PaymentStatus", cNumber) == null ? "" : getColumnDetails("PaymentStatus", cNumber);
+            String appealStatus = getColumnDetails("AppealStatus", cNumber) == null ? "" : getColumnDetails("AppealStatus", cNumber);
             if (appealStatus.equalsIgnoreCase("APPROVED") || paymentStatus.equalsIgnoreCase("PAID")) {
                 Main.statement.executeUpdate("DELETE FROM Encompasses WHERE CNumber = \'" + cNumber + "\';");
                 Main.statement.executeUpdate("DELETE FROM Citation WHERE CNumber = \'" + cNumber + "\';");
@@ -416,7 +552,6 @@ public class Citation {
         while (!flag) {
             System.out.println("\nEnter citation number to be updated: ");
             citationNumber = scanner.nextLine();
-
             if (!doesCitationNoExist(citationNumber)) {
                 System.out.println("Incorrect citation number entered. Please select from the below license numbers:");
                 ResultSet citations = Main.statement.executeQuery("SELECT CNumber FROM Citation;");
@@ -431,7 +566,17 @@ public class Citation {
         return citationNumber;
     }
 
-    private static BigInteger getDriverIdFromLicenseNo(String licenseNo) throws SQLException {
+    public static List<String> getCitationNumberFromLicense(String licenseNo) throws SQLException {
+        List<String> citationNos = new ArrayList<>();
+        boolean flag = false;
+        ResultSet citations = Main.statement.executeQuery("SELECT CNumber FROM Citation WHERE LicenseNo = \'" + licenseNo + "\';");
+        while (citations.next()) {
+            citationNos.add(citations.getString("CNumber"));
+        }
+        return citationNos;
+    }
+
+    public static BigInteger getDriverIdFromLicenseNo(String licenseNo) throws SQLException {
         BigInteger driverId = null;
         ResultSet ids = Main.statement.executeQuery("Select DriverID from Permit NATURAL RIGHT OUTER JOIN Vehicle WHERE Vehicle.LicenseNo = \'" + licenseNo + "\';");
         while (ids.next()) {
@@ -444,7 +589,7 @@ public class Citation {
         return driverId;
     }
 
-    private static boolean doesCitationNoExist(String cNumber) throws SQLException {
+    public static boolean doesCitationNoExist(String cNumber) throws SQLException {
         boolean citationExists = false;
         ResultSet rs = Main.statement.executeQuery("SELECT * FROM Citation WHERE CNumber = \'" + cNumber + "\';");
         if (rs.next()) {
@@ -453,7 +598,7 @@ public class Citation {
         return citationExists;
     }
 
-    private static String getColumnDetails(String columnName, String cNumber) throws SQLException {
+    public static String getColumnDetails(String columnName, String cNumber) throws SQLException {
         String result = null;
         ResultSet citations = Main.statement.executeQuery("SELECT " + columnName + " FROM Citation WHERE CNumber = \'" + cNumber + "\';");
         while (citations.next()) {
@@ -461,4 +606,39 @@ public class Citation {
         }
         return result;
     }
+
+    public static boolean checkIfCitationsExist(String licenseNo) throws SQLException {
+        boolean citationExist = false;
+        List<String> cNumbers = getCitationNumberFromLicense(licenseNo);
+        if (cNumbers != null) {
+            citationExist = true;
+        }
+        return citationExist;
+    }
+
+    public static void deleteCitationIfApproved(String licenseNo, String... queries) throws SQLException {
+        boolean queryExist = queries.length > 0;
+        List<String> cNumbers = getCitationNumberFromLicense(licenseNo);
+        for (String value : cNumbers) {
+            if (Citation.doesCitationNoExist(value)) {
+                String paymentStatus = Citation.getColumnDetails("PaymentStatus", value) == null ? "" : Citation.getColumnDetails("PaymentStatus", value);
+                String appealStatus = Citation.getColumnDetails("AppealStatus", value) == null ? "" : Citation.getColumnDetails("AppealStatus", value);
+                if (appealStatus.equalsIgnoreCase("APPROVED") || paymentStatus.equalsIgnoreCase("PAID")) {
+                    Main.statement.executeUpdate("DELETE FROM Encompasses WHERE CNumber = \'" + value + "\';");
+                    Main.statement.executeUpdate("DELETE FROM Citation WHERE CNumber = \'" + value + "\';");
+                    if (queryExist) {
+                        for (String query : queries) {
+                            Main.statement.executeUpdate(query);
+                        }
+                    }
+                    System.out.println("Deleted successfully.");
+                } else {
+                    System.out.println("Cannot delete due to UNPAID CITATIONS.");
+                }
+            } else {
+                System.out.println("Invalid citation number entered. Please try again."); //remove
+            }
+        }
+    }
+
 }
